@@ -1,0 +1,4181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Caro Online • GitHub + Kết Bạn + Admin Theo Thời Gian</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #131c2e;
+      --border: rgba(255, 255, 255, 0.12);
+      --primary: #0a84ff;
+      --green: #30d158;
+      --amber: #ff9f0a;
+      --red: #ff453a;
+      --purple: #bf5af2;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    * { box-sizing: border-box; user-select: none; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 52px;
+      padding: 0 12px;
+      background: rgba(17, 24, 39, 0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .brand { font-weight: 900; font-size: 14px; }
+    .hdr-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .currency { font-size: 12px; font-weight: 800; color: #ffd60a; display: flex; gap: 8px; }
+    .role-tag {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(10, 132, 255, 0.18);
+      border: 1px solid rgba(10, 132, 255, 0.45);
+      color: #93c5fd;
+    }
+    .role-tag.admin {
+      background: rgba(48, 209, 88, 0.18);
+      border-color: rgba(48, 209, 88, 0.5);
+      color: #86efac;
+    }
+    button, input {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 12px;
+      padding: 8px 10px;
+      outline: none;
+    }
+    button { font-weight: 800; cursor: pointer; }
+    button.primary { background: var(--primary); border: none; }
+    button.green { background: var(--green); color: #052e16; border: none; }
+    button.amber { background: var(--amber); color: #1c1203; border: none; }
+    button.red { background: var(--red); color: #fff; border: none; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 10, 18, 0.92);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 1200;
+    }
+    .modal-card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .big-code-box {
+      background: rgba(10, 132, 255, 0.14);
+      border: 1px solid rgba(10, 132, 255, 0.45);
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+    }
+    .big-code-val {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 1px;
+      user-select: all;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1020px;
+      margin: 0 auto;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 14px;
+      flex: 1;
+    }
+    @media (max-width: 820px) {
+      .container { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card-title { font-size: 13px; font-weight: 800; margin: 0; }
+    .mono { font-family: var(--mono); color: #64d2ff; }
+    .small-muted { font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .admin-box {
+      border: 1px solid rgba(48, 209, 88, 0.45);
+      background: rgba(48, 209, 88, 0.07);
+      border-radius: 14px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .adjust-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .friend-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .friend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(15, 1fr);
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 6px;
+      border-radius: 14px;
+      aspect-ratio: 1;
+      max-width: 520px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .cell {
+      background: #0d1424;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: clamp(11px, 2.2vw, 18px);
+      cursor: pointer;
+    }
+    .cell.x { color: #38bdf8; }
+    .cell.o { color: #f43f5e; }
+    .cell.last { outline: 2px solid #ffd60a; outline-offset: -2px; }
+    .log-list {
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 11px;
+      font-family: var(--mono);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 8px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">Caro Online • GitHub</div>
+    <div class="hdr-right">
+      <div class="currency">
+        <span>💎 <span id="hdr-gem">10</span></span>
+        <span>⚡ <span id="hdr-energy">350</span></span>
+      </div>
+      <span id="header-role-badge" class="role-tag">Người chơi</span>
+      <button onclick="openLoginModal()">Tài khoản</button>
+      <button onclick="resetBoard()">Ván mới</button>
+    </div>
+  </header>
+
+  <!-- Modal đăng nhập / tạo tài khoản (ID không trùng & Tên không trùng) -->
+  <div id="login-modal" class="overlay">
+    <div class="modal-card">
+      <h2 class="card-title" style="font-size:15px;">Đăng Nhập / Đăng Ký Tài Khoản</h2>
+      <div class="big-code-box">
+        <div class="small-muted">ID DUY NHẤT CỦA BẠN (KHÔNG TRÙNG)</div>
+        <div id="login-big-uid" class="big-code-val">CARO-XXXXXX</div>
+      </div>
+      <div class="small-muted">
+        • ID tài khoản và Tên hiển thị đều kiểm tra trùng trên hệ thống.<br />
+        • Nếu tên đã có người dùng, hãy chọn tên khác.
+      </div>
+      <input id="login-nick-input" type="text" maxlength="20" placeholder="Nhập tên hiển thị duy nhất..." />
+      <div id="login-error-msg" class="small-muted" style="color:#ff453a;"></div>
+      <button class="primary" onclick="confirmUniqueAccount()">Xác Nhận Tài Khoản & Vào Game</button>
+      <button onclick="closeLoginModal()">Đóng</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <!-- Thông tin tài khoản & quyền Admin -->
+      <div class="card">
+        <h2 class="card-title">Tài Khoản & Quyền Admin</h2>
+        <div class="small-muted">
+          ID: <span id="player-uid-txt" class="mono"></span><br />
+          Tên: <b id="player-nick-display">Người chơi</b><br />
+          Reset ⚡ lúc 00:00: <span id="energy-reset-timer" class="mono">--:--:--</span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <input id="rename-nick-input" type="text" maxlength="20" placeholder="Đổi tên mới (không trùng)..." style="flex:1;" />
+          <button onclick="updateUniqueNickname()">Đổi tên</button>
+        </div>
+        <div id="rename-status-msg" class="small-muted"></div>
+
+        <div class="admin-box">
+          <div style="font-size:11px; font-weight:800; color:#86efac;">
+            MÃ ADMIN THEO THỜI GIAN (Multiad_xxxxxx)
+          </div>
+          <div class="small-muted">
+            Mã hiện lực: <b id="active-db-code-txt" class="mono">Đang tải...</b> • Còn: <b id="active-code-ttl-txt" class="mono">--</b>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <input id="admin-code-input" type="text" placeholder="Nhập Multiad_..." style="flex:1;" />
+            <button class="green" onclick="claimAdminWithTimeCode()">Xác nhận</button>
+          </div>
+          <div id="admin-verify-msg" class="small-muted">Người chơi thường: không có quyền chỉnh Gem/Energy.</div>
+        </div>
+
+        <!-- Khối chỉ hiện khi đã xác thực mã Admin -->
+        <div id="admin-economy-controls" class="admin-box" style="display:none; border-color: rgba(255, 214, 10, 0.5); background: rgba(255, 214, 10, 0.08);">
+          <div style="font-size:11px; font-weight:800; color:#ffd60a;">
+            CHỈNH ENERGY & GEM (ADMIN)
+          </div>
+          <div class="small-muted">
+            • ⚡ Energy: tự reset 350 mỗi 00:00 (vẫn có thể chỉnh tay).<br />
+            • 💎 Gem: giữ nguyên qua reload, chỉ thay đổi khi tiêu hoặc chỉnh tăng/giảm.
+          </div>
+          <div class="adjust-grid">
+            <button class="amber" onclick="adjustGem(+10)">+10 💎</button>
+            <button onclick="adjustGem(-10)">-10 💎</button>
+            <button class="green" onclick="adjustEnergy(+50)">+50 ⚡</button>
+            <button onclick="adjustEnergy(-50)">-50 ⚡</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kết bạn theo tên hoặc ID -->
+      <div class="card">
+        <h2 class="card-title">Kết Bạn (Theo Tên Hoặc ID)</h2>
+        <div style="display:flex; gap:6px;">
+          <input id="friend-search-input" type="text" placeholder="Nhập Tên hoặc ID (VD: CARO-...)" style="flex:1;" />
+          <button class="primary" onclick="sendFriendRequest()">Kết bạn</button>
+        </div>
+        <div id="friend-status-msg" class="small-muted">Tìm người chơi theo tên chính xác hoặc ID.</div>
+
+        <div style="font-size:11px; font-weight:800; color:var(--amber);">Lời mời kết bạn đến</div>
+        <div id="incoming-requests-list" class="friend-list"></div>
+
+        <div style="font-size:11px; font-weight:800; color:#86efac;">Danh sách bạn bè</div>
+        <div id="friends-confirmed-list" class="friend-list"></div>
+      </div>
+
+      <!-- Nhật ký ghi nhận mã Admin theo thời gian -->
+      <div class="card">
+        <h2 class="card-title">Nhật Ký Mã Admin Theo Thời Gian</h2>
+        <div id="admin-time-audit-list" class="log-list">Đang chờ ghi nhận...</div>
+      </div>
+    </div>
+
+    <!-- Bàn cờ Caro 15x15 -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 class="card-title">Bàn Cờ Caro (15×15)</h2>
+        <span id="turn-status-txt" style="font-size:12px; font-weight:800; color:#38bdf8;">Lượt của X</span>
+      </div>
+      <div id="caro-board" class="board-grid"></div>
+      <div id="game-info-txt" class="small-muted">Chạm ô để đánh cờ. Mỗi ván hoàn thành tiêu 2 ⚡ Energy.</div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBRhZRszJ4oGW2QcMuhnloVjNUBpejqnf4",
+      authDomain: "caro-adadd.firebaseapp.com",
+      databaseURL: "https://carro-henry-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "caro-adadd",
+      storageBucket: "caro-adadd.firebasestorage.app",
+      messagingSenderId: "920087558552",
+      appId: "1:920087558552:web:445aeadee5c11b9d5ed3ed",
+      measurementId: "G-HSFKPQ0JLP"
+    };
+
+    const ADMIN_MAIN_UID = "Multi_23102012";
+    const DAILY_MAX_ENERGY = 350;
+    const PLAYER_UID_KEY = "mg_caro_v3_uid";
+    const PLAYER_NICK_KEY = "mg_caro_v3_nick";
+    const PLAYER_GEM_KEY = "mg_caro_v3_gem";
+    const PLAYER_ENERGY_KEY = "mg_caro_v3_energy";
+    const PLAYER_ENERGY_DATE_KEY = "mg_caro_v3_energy_date";
+    const PLAYER_LOGGED_IN_KEY = "mg_caro_v3_logged_in";
+
+    let db = null;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+    } catch (e) {
+      console.warn("Firebase init warning:", e.message);
+    }
+
+    function normalizeNameKey(name) {
+      return (name || "").trim().toLowerCase().replace(/[^a-z0-9_À-ɏḀ-ỿ]+/gi, "_");
+    }
+
+    function generateCandidateUid() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const arr = new Uint32Array(6);
+      crypto.getRandomValues(arr);
+      let suffix = "";
+      for (let i = 0; i < 6; i++) suffix += chars[arr[i] % chars.length];
+      return "CARO-" + suffix;
+    }
+
+    let allUsersMap = {};
+    let currentFriendsMap = {};
+    let incomingRequestsMap = {};
+
+    async function getOrCreateUniqueUid() {
+      let uid = localStorage.getItem(PLAYER_UID_KEY);
+      if (uid) return uid;
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const candidate = generateCandidateUid();
+        if (!db) {
+          uid = candidate;
+          break;
+        }
+        const snap = await db.ref("usersRegistry/byId/" + candidate).once("value").catch(() => null);
+        if (!snap || !snap.exists()) {
+          uid = candidate;
+          break;
+        }
+      }
+      if (!uid) uid = generateCandidateUid() + "_" + Date.now().toString().slice(-3);
+      localStorage.setItem(PLAYER_UID_KEY, uid);
+      return uid;
+    }
+
+    let playerUid = localStorage.getItem(PLAYER_UID_KEY) || generateCandidateUid();
+    let playerNick = localStorage.getItem(PLAYER_NICK_KEY) || "";
+    let playerGem = Math.max(0, Number(localStorage.getItem(PLAYER_GEM_KEY) ?? 10));
+    localStorage.setItem(PLAYER_GEM_KEY, String(playerGem));
+
+    function getTodayDateKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    }
+
+    function syncDailyEnergyReset() {
+      const today = getTodayDateKey();
+      const savedDate = localStorage.getItem(PLAYER_ENERGY_DATE_KEY);
+      if (savedDate !== today) {
+        localStorage.setItem(PLAYER_ENERGY_DATE_KEY, today);
+        localStorage.setItem(PLAYER_ENERGY_KEY, String(DAILY_MAX_ENERGY));
+        return DAILY_MAX_ENERGY;
+      }
+      const rawE = Number(localStorage.getItem(PLAYER_ENERGY_KEY) ?? DAILY_MAX_ENERGY);
+      return Math.max(0, Number.isFinite(rawE) ? rawE : DAILY_MAX_ENERGY);
+    }
+
+    let playerEnergy = syncDailyEnergyReset();
+    let isSessionAdmin = false;
+    let latestActiveToken = null;
+    let revokedCodesMap = {};
+
+    async function registerAccountInRegistry(uid, nick) {
+      localStorage.setItem(PLAYER_UID_KEY, uid);
+      localStorage.setItem(PLAYER_NICK_KEY, nick);
+      localStorage.setItem(PLAYER_LOGGED_IN_KEY, "1");
+      if (!db) return true;
+
+      const nameKey = normalizeNameKey(nick);
+      const nameSnap = await db.ref("usersRegistry/byNameKey/" + nameKey).once("value");
+      if (nameSnap.exists() && nameSnap.val() !== uid) {
+        return false;
+      }
+
+      const prevNick = allUsersMap[uid]?.nickname;
+      if (prevNick && prevNick !== nick) {
+        const oldKey = normalizeNameKey(prevNick);
+        if (oldKey) {
+          await db.ref("usersRegistry/byNameKey/" + oldKey).remove().catch(() => {});
+        }
+      }
+
+      await db.ref("usersRegistry/byId/" + uid).set({
+        uid: uid,
+        nickname: nick,
+        nameKey: nameKey,
+        updatedAt: Date.now()
+      });
+      await db.ref("usersRegistry/byNameKey/" + nameKey).set(uid);
+      await db.ref("users/" + uid + "/profile").update({
+        uid: uid,
+        nickname: nick,
+        updatedAt: Date.now()
+      }).catch(() => {});
+      return true;
+    }
+
+    function persistEconomy() {
+      localStorage.setItem(PLAYER_GEM_KEY, String(Math.max(0, playerGem)));
+      localStorage.setItem(PLAYER_ENERGY_KEY, String(Math.max(0, playerEnergy)));
+      localStorage.setItem(PLAYER_ENERGY_DATE_KEY, getTodayDateKey());
+      if (db) {
+        db.ref("users/" + playerUid + "/currency").update({
+          gem: Math.max(0, playerGem),
+          energy: Math.max(0, playerEnergy),
+          lastEnergyResetDate: getTodayDateKey()
+        }).catch(() => {});
+      }
+    }
+
+    function renderEconomyAndProfile() {
+      document.getElementById("player-uid-txt").textContent = playerUid;
+      document.getElementById("player-nick-display").textContent = playerNick || "(Chưa đặt tên)";
+      document.getElementById("hdr-gem").textContent = playerGem;
+      document.getElementById("hdr-energy").textContent = playerEnergy;
+      document.getElementById("admin-economy-controls").style.display = isSessionAdmin ? "flex" : "none";
+
+      const badge = document.getElementById("header-role-badge");
+      if (isSessionAdmin) {
+        badge.textContent = `ADMIN (${ADMIN_MAIN_UID})`;
+        badge.className = "role-tag admin";
+      } else {
+        badge.textContent = `Người chơi (${playerUid})`;
+        badge.className = "role-tag";
+      }
+    }
+
+    function adjustGem(delta) {
+      if (!isSessionAdmin) return;
+      playerGem = Math.max(0, playerGem + Number(delta || 0));
+      persistEconomy();
+      renderEconomyAndProfile();
+    }
+
+    function adjustEnergy(delta) {
+      if (!isSessionAdmin) return;
+      playerEnergy = Math.max(0, playerEnergy + Number(delta || 0));
+      persistEconomy();
+      renderEconomyAndProfile();
+    }
+
+    async function openLoginModal() {
+      playerUid = await getOrCreateUniqueUid();
+      document.getElementById("login-big-uid").textContent = playerUid;
+      document.getElementById("login-nick-input").value = playerNick || "";
+      document.getElementById("login-error-msg").textContent = "";
+      document.getElementById("login-modal").style.display = "flex";
+    }
+
+    function closeLoginModal() {
+      document.getElementById("login-modal").style.display = "none";
+    }
+
+    async function confirmUniqueAccount() {
+      const inputEl = document.getElementById("login-nick-input");
+      const errEl = document.getElementById("login-error-msg");
+      const cleanNick = (inputEl.value || "").trim().slice(0, 20);
+      if (cleanNick.length < 2) {
+        errEl.textContent = "❌ Tên hiển thị phải có ít nhất 2 ký tự.";
+        return;
+      }
+      playerUid = await getOrCreateUniqueUid();
+      const ok = await registerAccountInRegistry(playerUid, cleanNick);
+      if (!ok) {
+        errEl.textContent = `❌ Tên "${cleanNick}" đã có người sử dụng! Hãy đặt tên khác.`;
+        return;
+      }
+      playerNick = cleanNick;
+      persistEconomy();
+      renderEconomyAndProfile();
+      closeLoginModal();
+    }
+
+    async function updateUniqueNickname() {
+      const inputEl = document.getElementById("rename-nick-input");
+      const statusEl = document.getElementById("rename-status-msg");
+      const cleanNick = (inputEl.value || "").trim().slice(0, 20);
+      if (cleanNick.length < 2) {
+        statusEl.textContent = "❌ Tên mới phải có ít nhất 2 ký tự.";
+        statusEl.style.color = "#ff453a";
+        return;
+      }
+      const ok = await registerAccountInRegistry(playerUid, cleanNick);
+      if (!ok) {
+        statusEl.textContent = `❌ Tên "${cleanNick}" đã bị trùng, không thể đổi!`;
+        statusEl.style.color = "#ff453a";
+        return;
+      }
+      playerNick = cleanNick;
+      inputEl.value = "";
+      statusEl.textContent = `✅ Đã cập nhật tên hiển thị duy nhất: ${playerNick}`;
+      statusEl.style.color = "#4ade80";
+      renderEconomyAndProfile();
+    }
+
+    // ==================== KẾT BẠN THEO TÊN HOẶC ID ====================
+    function findTargetUserByNameOrId(query) {
+      const q = (query || "").trim();
+      if (!q) return null;
+      const byExactId = allUsersMap[q] || allUsersMap[q.toUpperCase()];
+      if (byExactId) return byExactId;
+
+      const qLower = q.toLowerCase();
+      const qKey = normalizeNameKey(q);
+      for (const u of Object.values(allUsersMap)) {
+        if (String(u.uid || "").toLowerCase() === qLower) return u;
+        if (String(u.nickname || "").toLowerCase() === qLower) return u;
+        if (qKey && u.nameKey === qKey) return u;
+      }
+      return null;
+    }
+
+    async function sendFriendRequest() {
+      const inputEl = document.getElementById("friend-search-input");
+      const msgEl = document.getElementById("friend-status-msg");
+      const query = (inputEl.value || "").trim();
+      if (!query) {
+        msgEl.textContent = "❌ Nhập Tên hoặc ID người cần kết bạn.";
+        msgEl.style.color = "#ff453a";
+        return;
+      }
+      const target = findTargetUserByNameOrId(query);
+      if (!target || !target.uid) {
+        msgEl.textContent = `❌ Không tìm thấy người chơi có Tên hoặc ID "${query}".`;
+        msgEl.style.color = "#ff453a";
+        return;
+      }
+      if (target.uid === playerUid) {
+        msgEl.textContent = "❌ Không thể tự kết bạn với chính mình.";
+        msgEl.style.color = "#ff453a";
+        return;
+      }
+      if (currentFriendsMap[target.uid]) {
+        msgEl.textContent = `ℹ️ Bạn và ${target.nickname} (${target.uid}) đã là bạn bè.`;
+        msgEl.style.color = "#64d2ff";
+        return;
+      }
+
+      if (db) {
+        await db.ref(`friendRequests/${target.uid}/${playerUid}`).set({
+          fromUid: playerUid,
+          fromNick: playerNick || playerUid,
+          toUid: target.uid,
+          toNick: target.nickname || target.uid,
+          sentAt: Date.now()
+        });
+      }
+      inputEl.value = "";
+      msgEl.textContent = `✅ Đã gửi lời mời kết bạn tới ${target.nickname} (${target.uid}).`;
+      msgEl.style.color = "#4ade80";
+    }
+
+    async function acceptFriendRequest(fromUid) {
+      const req = incomingRequestsMap[fromUid];
+      const friendNick = req?.fromNick || allUsersMap[fromUid]?.nickname || fromUid;
+      if (db) {
+        await db.ref(`friends/${playerUid}/${fromUid}`).set({
+          uid: fromUid,
+          nickname: friendNick,
+          since: Date.now()
+        });
+        await db.ref(`friends/${fromUid}/${playerUid}`).set({
+          uid: playerUid,
+          nickname: playerNick || playerUid,
+          since: Date.now()
+        });
+        await db.ref(`friendRequests/${playerUid}/${fromUid}`).remove();
+      }
+    }
+
+    async function declineFriendRequest(fromUid) {
+      if (db) {
+        await db.ref(`friendRequests/${playerUid}/${fromUid}`).remove();
+      }
+    }
+
+    function renderFriendsUI() {
+      const incBox = document.getElementById("incoming-requests-list");
+      const frBox = document.getElementById("friends-confirmed-list");
+      incBox.textContent = "";
+      frBox.textContent = "";
+
+      const reqEntries = Object.values(incomingRequestsMap || {});
+      if (!reqEntries.length) {
+        const emptyInc = document.createElement("div");
+        emptyInc.className = "small-muted";
+        emptyInc.textContent = "Không có lời mời mới.";
+        incBox.appendChild(emptyInc);
+      } else {
+        reqEntries.forEach(r => {
+          const row = document.createElement("div");
+          row.className = "friend-row";
+
+          const info = document.createElement("span");
+          info.innerHTML = `<b>${r.fromNick || r.fromUid}</b> <span class="mono">(${r.fromUid})</span>`;
+
+          const actions = document.createElement("div");
+          actions.style.display = "flex";
+          actions.style.gap = "4px";
+
+          const btnOk = document.createElement("button");
+          btnOk.className = "green";
+          btnOk.style.padding = "4px 8px";
+          btnOk.textContent = "Đồng ý";
+          btnOk.onclick = () => acceptFriendRequest(r.fromUid);
+
+          const btnNo = document.createElement("button");
+          btnNo.className = "red";
+          btnNo.style.padding = "4px 8px";
+          btnNo.textContent = "Từ chối";
+          btnNo.onclick = () => declineFriendRequest(r.fromUid);
+
+          actions.appendChild(btnOk);
+          actions.appendChild(btnNo);
+          row.appendChild(info);
+          row.appendChild(actions);
+          incBox.appendChild(row);
+        });
+      }
+
+      const friendEntries = Object.values(currentFriendsMap || {});
+      if (!friendEntries.length) {
+        const emptyFr = document.createElement("div");
+        emptyFr.className = "small-muted";
+        emptyFr.textContent = "Chưa có bạn bè nào.";
+        frBox.appendChild(emptyFr);
+      } else {
+        friendEntries.forEach(f => {
+          const row = document.createElement("div");
+          row.className = "friend-row";
+          const latestNick = allUsersMap[f.uid]?.nickname || f.nickname || f.uid;
+          row.innerHTML = `<span><b>${latestNick}</b></span><span class="mono">${f.uid}</span>`;
+          frBox.appendChild(row);
+        });
+      }
+    }
+
+    function updateActiveTokenUI() {
+      const codeEl = document.getElementById("active-db-code-txt");
+      const ttlEl = document.getElementById("active-code-ttl-txt");
+      if (!latestActiveToken || !latestActiveToken.code) {
+        codeEl.textContent = "Chưa có mã";
+        ttlEl.textContent = "--";
+        return;
+      }
+      const remainMs = Math.max(0, (latestActiveToken.expiresAt || 0) - Date.now());
+      const remainSec = Math.ceil(remainMs / 1000);
+      const mins = Math.floor(remainSec / 60);
+      const secs = remainSec % 60;
+      codeEl.textContent = latestActiveToken.code;
+      if (remainMs <= 0) {
+        ttlEl.textContent = "Hết hạn";
+        ttlEl.style.color = "#ff453a";
+      } else {
+        ttlEl.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+        ttlEl.style.color = "#4ade80";
+      }
+
+      const now = new Date();
+      const nextMid = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      const diffMid = Math.max(0, Math.floor((nextMid.getTime() - now.getTime()) / 1000));
+      const mh = Math.floor(diffMid / 3600);
+      const mm = Math.floor((diffMid % 3600) / 60);
+      const ms = diffMid % 60;
+      document.getElementById("energy-reset-timer").textContent =
+        `${String(mh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:${String(ms).padStart(2, "0")}`;
+
+      if (syncDailyEnergyReset() !== playerEnergy && getTodayDateKey() === localStorage.getItem(PLAYER_ENERGY_DATE_KEY)) {
+        playerEnergy = DAILY_MAX_ENERGY;
+        renderEconomyAndProfile();
+      }
+    }
+
+    async function claimAdminWithTimeCode(explicitCode = "") {
+      const rawCode = (explicitCode || document.getElementById("admin-code-input").value || "").trim();
+      const msgEl = document.getElementById("admin-verify-msg");
+      if (!rawCode) {
+        msgEl.textContent = "❌ Vui lòng nhập mã Admin (Multiad_xxxxxx).";
+        msgEl.style.color = "#ff453a";
+        return;
+      }
+
+      if (revokedCodesMap[rawCode] || revokedCodesMap[encodeURIComponent(rawCode)]) {
+        isSessionAdmin = false;
+        renderEconomyAndProfile();
+        msgEl.textContent = `❌ Mã ${rawCode} đã nhảy sang mã mới và bị hủy hiệu lực!`;
+        msgEl.style.color = "#ff453a";
+        return;
+      }
+
+      const now = Date.now();
+      const valid =
+        latestActiveToken &&
+        latestActiveToken.code === rawCode &&
+        Number(latestActiveToken.expiresAt || 0) > now;
+
+      if (!valid) {
+        isSessionAdmin = false;
+        renderEconomyAndProfile();
+        msgEl.textContent = `❌ Mã ${rawCode} không khớp hoặc đã hết hạn thời gian.`;
+        msgEl.style.color = "#ff453a";
+        return;
+      }
+
+      isSessionAdmin = true;
+      localStorage.setItem(PLAYER_LOGGED_IN_KEY, "1");
+      renderEconomyAndProfile();
+      const timeIso = new Date(now).toISOString();
+      const timeLocal = new Date(now).toLocaleString("vi-VN");
+      msgEl.textContent = `✅ Đã kích hoạt Admin lúc ${timeLocal}. Có thể chỉnh Gem & Energy.`;
+      msgEl.style.color = "#4ade80";
+
+      if (db) {
+        const auditPayload = {
+          code: rawCode,
+          adminUid: ADMIN_MAIN_UID,
+          playerUid: playerUid,
+          nickname: playerNick || playerUid,
+          verifiedAtMs: now,
+          verifiedAtLocal: timeLocal,
+          verifiedAtIso: timeIso,
+          codeExpiresAtMs: latestActiveToken.expiresAt
+        };
+        await db.ref("adminTimeAuth/verifiedSessions/" + playerUid).set(auditPayload).catch(() => {});
+        await db.ref("adminTimeAuth/auditTrail").push(auditPayload).catch(() => {});
+      }
+    }
+
+    if (db) {
+      db.ref("usersRegistry/byId").on("value", snap => {
+        allUsersMap = snap.val() || {};
+        renderFriendsUI();
+      });
+
+      db.ref("friendRequests/" + playerUid).on("value", snap => {
+        incomingRequestsMap = snap.val() || {};
+        renderFriendsUI();
+      });
+
+      db.ref("friends/" + playerUid).on("value", snap => {
+        currentFriendsMap = snap.val() || {};
+        renderFriendsUI();
+      });
+
+      db.ref("adminTimeAuth/active").on("value", snap => {
+        const prevCode = latestActiveToken?.code;
+        latestActiveToken = snap.val() || null;
+        if (prevCode && latestActiveToken?.code && prevCode !== latestActiveToken.code) {
+          revokedCodesMap[prevCode] = { revokedAt: Date.now(), replacedBy: latestActiveToken.code };
+          if (isSessionAdmin) {
+            isSessionAdmin = false;
+            renderEconomyAndProfile();
+            const msgEl = document.getElementById("admin-verify-msg");
+            msgEl.textContent = `⚠️ Mã cũ ${prevCode} đã đổi mã mới. Nhập mã mới để tiếp tục quyền Admin.`;
+            msgEl.style.color = "#ff9f0a";
+          }
+        }
+        updateActiveTokenUI();
+      });
+
+      db.ref("adminTimeAuth/revokedCodes").on("value", snap => {
+        revokedCodesMap = snap.val() || {};
+      });
+
+      db.ref("adminTimeAuth/auditTrail").limitToLast(12).on("value", snap => {
+        const listEl = document.getElementById("admin-time-audit-list");
+        const val = snap.val() || {};
+        const items = Object.values(val).sort((a, b) => (b.verifiedAtMs || 0) - (a.verifiedAtMs || 0));
+        listEl.textContent = "";
+        if (!items.length) {
+          listEl.textContent = "Chưa có lượt ghi nhận mã Admin nào.";
+          return;
+        }
+        items.forEach(it => {
+          const line = document.createElement("div");
+          line.textContent = `[${it.verifiedAtLocal || ""}] ${it.code} • ${it.nickname || it.playerUid}`;
+          listEl.appendChild(line);
+        });
+      });
+    }
+
+    const SIZE = 15;
+    let grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(""));
+    let turn = "X";
+    let gameOver = false;
+    let lastMove = null;
+    let matchCharged = false;
+
+    function renderBoard() {
+      const boardEl = document.getElementById("caro-board");
+      boardEl.textContent = "";
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const cell = document.createElement("div");
+          const val = grid[r][c];
+          const isLast = lastMove && lastMove.r === r && lastMove.c === c;
+          cell.className = `cell ${val ? val.toLowerCase() : ""} ${isLast ? "last" : ""}`;
+          cell.textContent = val;
+          cell.onclick = () => onCellClick(r, c);
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function checkWin(r, c, p) {
+      const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      for (const [dr, dc] of dirs) {
+        let count = 1;
+        for (const sgn of [1, -1]) {
+          let step = 1;
+          while (true) {
+            const nr = r + dr * step * sgn;
+            const nc = c + dc * step * sgn;
+            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] === p) {
+              count++;
+              step++;
+            } else {
+              break;
+            }
+          }
+        }
+        if (count >= 5) return true;
+      }
+      return false;
+    }
+
+    function onCellClick(r, c) {
+      if (gameOver || grid[r][c] !== "") return;
+      if (!matchCharged) {
+        if (playerEnergy < 2) {
+          alert("❌ Không đủ 2 ⚡ Energy để đánh ván mới!");
+          return;
+        }
+        playerEnergy -= 2;
+        matchCharged = true;
+        persistEconomy();
+        renderEconomyAndProfile();
+      }
+      grid[r][c] = turn;
+      lastMove = { r, c };
+      renderBoard();
+      if (checkWin(r, c, turn)) {
+        gameOver = true;
+        if (turn === "X") {
+          playerGem += 5;
+          persistEconomy();
+          renderEconomyAndProfile();
+          document.getElementById("turn-status-txt").textContent = "X chiến thắng! (+5 💎)";
+        } else {
+          document.getElementById("turn-status-txt").textContent = "O chiến thắng!";
+        }
+        return;
+      }
+      turn = turn === "X" ? "O" : "X";
+      document.getElementById("turn-status-txt").textContent = `Lượt của ${turn}`;
+    }
+
+    function resetBoard() {
+      grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(""));
+      turn = "X";
+      gameOver = false;
+      lastMove = null;
+      matchCharged = false;
+      document.getElementById("turn-status-txt").textContent = "Lượt của X";
+      renderBoard();
+    }
+
+    (async function bootApp() {
+      playerUid = await getOrCreateUniqueUid();
+      const params = new URLSearchParams(window.location.search);
+      const queryAdminCode = (params.get("adminCode") || "").trim();
+      const skipLoginFlag = params.get("skipLogin") === "1";
+
+      renderBoard();
+      renderEconomyAndProfile();
+      renderFriendsUI();
+      updateActiveTokenUI();
+
+      if (queryAdminCode) {
+        if (!playerNick) playerNick = "Admin_" + playerUid.slice(-4);
+        await registerAccountInRegistry(playerUid, playerNick);
+        renderEconomyAndProfile();
+        document.getElementById("admin-code-input").value = queryAdminCode;
+        setTimeout(() => claimAdminWithTimeCode(queryAdminCode), 750);
+      } else if (!skipLoginFlag && (!localStorage.getItem(PLAYER_LOGGED_IN_KEY) || !playerNick)) {
+        openLoginModal();
+      }
+    })();
+
+    setInterval(updateActiveTokenUI, 500);
+  </script>
+</body>
+</html>>
+                    <option value="2">Đáp án C</option>
+                    <option value="3">Đáp án D</option>
+                </select>
+            </div>
+            <button class="auth-btn" style="background: var(--ios-green); padding: 9px; font-size: 12px;" onclick="uploadNewQuestionToFirebase()">Lưu Quiz</button>
+            <div style="font-size: 11px; color: var(--text-muted);">Quiz của Admin đã đồng bộ: <b id="admin-total-q">0</b></div>
+        </div>
+
+        <div class="admin-sub-panel" id="admin-mine-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <span style="font-size: 12px; font-weight: 800; color: var(--ios-amber);">Bàn Mìn Đơn Đang Chơi</span>
+                <button type="button" class="btn-sm" id="btn-mine-place-mode" style="background:var(--ios-red); color:#fff; border:none;" onclick="toggleAdminMineTapMode()">
+                    Chế độ: Bấm đặt mìn (BẬT)
+                </button>
+            </div>
+            <div id="admin-solo-target-info" style="font-size:11px; color:#cbd5e1; font-family:var(--font-mono);">
+                Mục tiêu: Người chơi đơn (tới kể cả khi ở Sảnh)
+            </div>
+            <div class="solo-admin-mine-grid" id="admin-solo-mine-board"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--text-muted);">
+                <span>Ô sáng = ô đã mở/đang chơi • 💣 = đã đặt mìn</span>
+                <button type="button" class="btn-sm" onclick="clearAllSoloMinesFromAdmin()">Xóa hết mìn</button>
+            </div>
+        </div>
+
+        <div class="admin-sub-panel" id="admin-data-panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <span style="font-size: 12px; font-weight: 800; color: #4ade80;">Dữ liệu Admin • UID: Multi_23102012</span>
+                <div style="display:flex; gap:5px;">
+                    <button type="button" class="btn-sm" onclick="refreshAdminDataPanel()">↻</button>
+                    <button type="button" class="btn-sm" style="background:var(--ios-red); color:#fff; border:none;" onclick="clearAdminAILogData()">Xóa log AI</button>
+                </div>
+            </div>
+            <div id="admin-data-summary" style="font-size:11px; color:#cbd5e1; font-family:var(--font-mono);">
+                Đang tải dữ liệu của Multi_23102012...
+            </div>
+            <div class="admin-data-log-box" id="admin-ai-return-logs"></div>
+        </div>
+
+        <div class="impersonate-ai-box" onclick="openImpersonateAIPicker()">
+            <div>đội lốt AI (khi có phòng • trả dữ liệu về Multi_23102012)</div>
+            <div id="admin-ai-rooms-hint" style="font-size: 11px; color: #e879f9; margin-top: 4px; font-family: var(--font-mono);">Nhấn để kiểm tra phòng đang có sẵn và đội lốt AI...</div>
+        </div>
+        <div class="admin-sub-panel" id="admin-ai-panel"></div>
+
+        <button class="auth-btn" style="background: rgba(255,255,255,0.14); padding: 10px;" onclick="closeAdminModal()">Đóng Admin</button>
+    </div>
+</div>
+
+<div id="lightbox-modal" onclick="this.style.display='none'">
+    <img id="lightbox-img" src="" alt="Zoomed Image">
+</div>
+
+<header>
+    <div class="brand" data-i18n="brand">Multi game v2.4</div>
+    <div class="header-controls">
+        <div class="currency-box">
+            <span>💎 <span id="header-gem">10</span></span>
+            <span>⚡ <span id="header-energy">350</span></span>
+        </div>
+        <button class="btn-sm" onclick="openAccountModal()" data-i18n="account_btn">Tài Khoản</button>
+        <button class="btn-sm" onclick="returnToLobby()" data-i18n="lobby_btn">Sảnh</button>
+    </div>
+</header>
+
+<div class="main-layout">
+    <aside class="sidebar" id="sidebar-drawer">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="section-title" ondblclick="openAdminAuth()" style="margin:0; color: var(--primary); cursor: pointer;" title="Nhấp đúp mở Admin">Điều Khiển</div>
+            <button class="btn-sm" onclick="toggleSidebar()">Đóng</button>
+        </div>
+
+        <div>
+            <div class="section-title">Mã Phòng Online</div>
+            <div class="room-badge">
+                <span id="current-room-code-txt">------</span>
+                <button class="btn-sm" onclick="copyRoomCode()">Sao chép</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <button class="btn" onclick="startPlayWithAIMode()">🤖 Đánh Với AI</button>
+            <button class="btn" onclick="restartMatch()">Chơi Lại Ván Này</button>
+            <button class="btn" onclick="openBoardThemeModal()">Màu Bàn Cờ Caro (7 Màu)</button>
+            <button class="btn" onclick="openPieceCustomizerAdvanced()">Tùy Chỉnh Quân Cờ</button>
+            <button class="btn" onclick="openQuizModal()">Quiz Chơi Đơn (15s)</button>
+            <button class="btn" onclick="openMinesweeperModal()">Dò Mìn</button>
+            <button class="btn" style="border-color:#bf5af2; color:#e9d5ff;" onclick="openAdminAuth()">🛡️ Bảng Admin</button>
+        </div>
+    </aside>
+
+    <main class="center-stage" id="caro-stage">
+        <div class="match-bar">
+            <div class="top-setting-btn" onclick="toggleSidebar()">☰</div>
+
+            <div class="player-card">
+                <div class="avatar frame-default" id="avatar-x" onclick="openAccountModal()">
+                    <img id="img-avatar-x" src="" style="display:none;"><span id="txt-avatar-x">X</span>
+                </div>
+                <div class="player-info">
+                    <div class="player-name-row">
+                        <span class="player-name" id="name-x">Đang đợi (X)</span>
+                        <span id="device-badge-x" class="device-badge" style="display:none;"></span>
+                    </div>
+                    <div class="player-meta">
+                        <span id="country-x"></span>
+                        <span id="score-x">Bước: 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vs-center">
+                <div class="big-vs" id="vs-label-badge" onclick="toggleLiveChat()">VS</div>
+                <div class="live-chat-dropdown" id="live-chat-dropdown">
+                    <div style="font-size:11px; font-weight:bold; color:var(--primary); text-align:center; border-bottom:1px solid var(--border); padding-bottom:4px;">Chat Trực Tuyến</div>
+                    <div class="chat-msgs-box" id="chat-messages-box"></div>
+                    <div class="emoji-bar" id="emoji-bar">
+                        <span class="emoji-item" onclick="sendEmoji('🔥')">🔥</span>
+                        <span class="emoji-item" onclick="sendEmoji('😂')">😂</span>
+                        <span class="emoji-item" onclick="sendEmoji('🎉')">🎉</span>
+                        <span class="emoji-item" onclick="sendEmoji('😎')">😎</span>
+                        <span class="emoji-item" onclick="sendEmoji('❤️')">❤️</span>
+                        <span class="emoji-item" onclick="sendEmoji('👍')">👍</span>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <input type="text" class="auth-input" id="chat-input-text" placeholder="Nhập tin nhắn (tối đa 160 ký tự)..." maxlength="160" style="padding: 6px 8px; font-size: 11px; margin:0;" onkeydown="if(event.key==='Enter') sendChatMessage()">
+                        <input type="file" id="chat-file-input" accept="image/*" style="display: none;" onchange="sendChatImage(this)">
+                        <button class="btn-sm" style="background:var(--primary); color:#fff; padding: 6px 8px;" onclick="document.getElementById('chat-file-input').click()">Ảnh</button>
+                        <button class="btn-sm" onclick="sendChatMessage()" style="padding: 6px 8px;">Gửi</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="player-card" style="justify-content: flex-end;">
+                <div class="player-info" style="text-align: right;">
+                    <div class="player-name-row" style="justify-content: flex-end;">
+                        <span id="device-badge-o" class="device-badge" style="display:none;"></span>
+                        <span class="player-name" id="name-o">Đang đợi... (O)</span>
+                    </div>
+                    <div class="player-meta" style="justify-content: flex-end;">
+                        <span id="country-o"></span>
+                        <span id="score-o">Bước: 0</span>
+                    </div>
+                </div>
+                <div class="avatar frame-default" id="avatar-o">
+                    <img id="img-avatar-o" src="" style="display:none;"><span id="txt-avatar-o">O</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-viewport" id="viewport">
+            <div class="board-wrapper" id="board"></div>
+        </div>
+
+        <div class="status-footer">
+            <span id="status-text" style="font-size:12px; font-weight:700;">Đang ở sảnh...</span>
+            <span id="admin-room-telemetry" style="font-size: 11px; color: #ffd60a; font-family: var(--font-mono);"></span>
+        </div>
+    </main>
+</div>
+
+<div class="modal-overlay" id="result-modal">
+    <div class="modal-card">
+        <div class="result-title" id="result-title">WIN</div>
+        <div style="font-size:13px; color:var(--text-muted);" id="result-subtitle">Trận đấu kết thúc.</div>
+        <div id="reward-badge" style="font-size: 12px; color: #ffd60a; font-weight: bold;">+5 💎 Gem</div>
+        <button class="auth-btn" onclick="restartMatch()">Chơi Ván Mới</button>
+        <button class="auth-btn" style="background:rgba(255,255,255,0.14);" onclick="returnToLobby()">Về Sảnh</button>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBRhZRszJ4oGW2QcMuhnloVjNUBpejqnf4",
+        authDomain: "caro-adadd.firebaseapp.com",
+        databaseURL: "https://carro-henry-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "caro-adadd",
+        storageBucket: "caro-adadd.firebasestorage.app",
+        messagingSenderId: "920087558552",
+        appId: "1:920087558552:web:445aeadee5c11b9d5ed3ed",
+        measurementId: "G-HSFKPQ0JLP"
+    };
+
+    let db = null;
+    let auth = null;
+    let authUid = null;
+    let authReadyPromise = Promise.resolve(null);
+
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        auth = firebase.auth();
+
+        authReadyPromise = new Promise((resolve) => {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    authUid = user.uid;
+                    updateAdminAuthPreview();
+                    resolve(user);
+                }
+            });
+
+            auth.signInAnonymously()
+                .then((cred) => {
+                    authUid = cred.user ? cred.user.uid : null;
+                    updateAdminAuthPreview();
+                    resolve(cred.user || null);
+                })
+                .catch((err) => {
+                    console.warn("Anonymous Auth:", err.code, err.message);
+                    resolve(null);
+                });
+        });
+    } catch (e) { console.warn("Firebase init:", e.message); }
+
+    const DAILY_MAX_ENERGY = 350;
+    const ADMIN_MAIN_UID = "Multi_23102012";
+    const TOTAL_QUESTION_BANK_SIZE = 10000;
+    const DAILY_QUESTION_BATCH_SIZE = 300;
+    const QUIZ_THINK_SECONDS = 15;
+    const MAX_CHAT_LEN = 160;
+    const ROOM_STALE_MS = 2 * 60 * 60 * 1000;
+
+    let adminFailAttempts = 0;
+    let adminLockedUntilTs = 0;
+
+    function generateSecureRoomCode() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        const arr = new Uint32Array(8);
+        crypto.getRandomValues(arr);
+        let out = "";
+        for (let i = 0; i < 8; i++) out += chars[arr[i] % chars.length];
+        return out;
+    }
+
+    function generateSecurePlayerUid() {
+        const arr = new Uint32Array(2);
+        crypto.getRandomValues(arr);
+        return "CARO-" + arr[0].toString(36).toUpperCase() + arr[1].toString(36).toUpperCase().slice(0, 4);
+    }
+
+    function isSafeImageDataUrl(url) {
+        if (typeof url !== "string") return false;
+        if (url === "https://i.imgur.com/6VBx3io.png") return true;
+        return /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(url) && url.length <= 220000;
+    }
+
+    const fiftyCountriesList = [
+        { code: "VN", label: "🇻🇳 Việt Nam", lang: "vi" },
+        { code: "JP", label: "🇯🇵 Nhật Bản", lang: "ja" },
+        { code: "KR", label: "🇰🇷 Hàn Quốc", lang: "ko" },
+        { code: "US", label: "🇺🇸 Hoa Kỳ", lang: "en" },
+        { code: "GB", label: "🇬🇧 Vương quốc Anh", lang: "en" },
+        { code: "DE", label: "🇩🇪 Đức", lang: "de" },
+        { code: "FR", label: "🇫🇷 Pháp", lang: "fr" },
+        { code: "CA", label: "🇨🇦 Canada", lang: "en" },
+        { code: "AU", label: "🇦🇺 Úc", lang: "en" },
+        { code: "SG", label: "🇸🇬 Singapore", lang: "en" },
+        { code: "TH", label: "🇹🇭 Thái Lan", lang: "th" },
+        { code: "ID", label: "🇮🇩 Indonesia", lang: "id" },
+        { code: "MY", label: "🇲🇾 Malaysia", lang: "ms" },
+        { code: "PH", label: "🇵🇭 Philippines", lang: "fil" },
+        { code: "CN", label: "🇨🇳 Trung Quốc", lang: "zh-CN" },
+        { code: "TW", label: "🇹🇼 Đài Loan", lang: "zh-TW" },
+        { code: "HK", label: "🇭🇰 Hồng Kông", lang: "zh-TW" },
+        { code: "IN", label: "🇮🇳 Ấn Độ", lang: "hi" },
+        { code: "BR", label: "🇧🇷 Brazil", lang: "pt" },
+        { code: "AR", label: "🇦🇷 Argentina", lang: "es" },
+        { code: "MX", label: "🇲🇽 Mexico", lang: "es" },
+        { code: "ES", label: "🇪🇸 Tây Ban Nha", lang: "es" },
+        { code: "IT", label: "🇮🇹 Ý", lang: "it" },
+        { code: "NL", label: "🇳🇱 Hà Lan", lang: "nl" },
+        { code: "SE", label: "🇸🇪 Thụy Điển", lang: "sv" },
+        { code: "NO", label: "🇳🇴 Na Uy", lang: "no" },
+        { code: "FI", label: "🇫🇮 Phần Lan", lang: "fi" },
+        { code: "DK", label: "🇩🇰 Đan Mạch", lang: "da" },
+        { code: "CH", label: "🇨🇭 Thụy Sĩ", lang: "de" },
+        { code: "PL", label: "🇵🇱 Ba Lan", lang: "pl" },
+        { code: "RU", label: "🇷🇺 Nga", lang: "ru" },
+        { code: "TR", label: "🇹🇷 Thổ Nhĩ Kỳ", lang: "tr" },
+        { code: "SA", label: "🇸🇦 Ả Rập Xê Út", lang: "ar" },
+        { code: "AE", label: "🇦🇪 UAE", lang: "ar" },
+        { code: "EG", label: "🇪🇬 Ai Cập", lang: "ar" },
+        { code: "ZA", label: "🇿🇦 Nam Phi", lang: "en" },
+        { code: "NZ", label: "🇳🇿 New Zealand", lang: "en" },
+        { code: "PT", label: "🇵🇹 Bồ Đào Nha", lang: "pt" },
+        { code: "GR", label: "🇬🇷 Hy Lạp", lang: "el" },
+        { code: "IE", label: "🇮🇪 Ireland", lang: "en" },
+        { code: "BE", label: "🇧🇪 Bỉ", lang: "nl" },
+        { code: "AT", label: "🇦🇹 Áo", lang: "de" },
+        { code: "CZ", label: "🇨🇿 Séc", lang: "cs" },
+        { code: "HU", label: "🇭🇺 Hungary", lang: "hu" },
+        { code: "RO", label: "🇷🇴 Romania", lang: "ro" },
+        { code: "UA", label: "🇺🇦 Ukraina", lang: "uk" },
+        { code: "IL", label: "🇮🇱 Israel", lang: "he" },
+        { code: "CL", label: "🇨🇱 Chile", lang: "es" },
+        { code: "CO", label: "🇨🇴 Colombia", lang: "es" },
+        { code: "PE", label: "🇵🇪 Peru", lang: "es" }
+    ];
+
+    const fiftyLanguagesList = [
+        { code: "vi", label: "Tiếng Việt (Vietnamese)" }, { code: "en", label: "English (Tiếng Anh)" },
+        { code: "ja", label: "日本語 (Japanese)" }, { code: "ko", label: "한국어 (Korean)" },
+        { code: "zh-CN", label: "简体中文 (Chinese Simplified)" }, { code: "zh-TW", label: "繁體中文 (Chinese Traditional)" },
+        { code: "fr", label: "Français (French)" }, { code: "de", label: "Deutsch (German)" },
+        { code: "es", label: "Español (Spanish)" }, { code: "pt", label: "Português (Portuguese)" },
+        { code: "ru", label: "Русский (Russian)" }, { code: "ar", label: "العربية (Arabic)" },
+        { code: "hi", label: "हिन्दी (Hindi)" }, { code: "th", label: "ไทย (Thai)" },
+        { code: "id", label: "Bahasa Indonesia" }, { code: "ms", label: "Bahasa Melayu" },
+        { code: "fil", label: "Filipino" }, { code: "it", label: "Italiano (Italian)" },
+        { code: "nl", label: "Nederlands (Dutch)" }, { code: "sv", label: "Svenska (Swedish)" },
+        { code: "no", label: "Norsk (Norwegian)" }, { code: "fi", label: "Suomi (Finnish)" },
+        { code: "da", label: "Dansk (Danish)" }, { code: "pl", label: "Polski (Polish)" },
+        { code: "tr", label: "Türkçe (Turkish)" }, { code: "uk", label: "Українська (Ukrainian)" },
+        { code: "cs", label: "Čeština (Czech)" }, { code: "el", label: "Ελληνικά (Greek)" },
+        { code: "he", label: "עברית (Hebrew)" }, { code: "hu", label: "Magyar (Hungarian)" },
+        { code: "ro", label: "Română (Romanian)" }, { code: "bn", label: "বাংলা (Bengali)" },
+        { code: "ta", label: "தமிழ் (Tamil)" }, { code: "te", label: "తెలుగు (Telugu)" },
+        { code: "mr", label: "मराठी (Marathi)" }, { code: "ur", label: "اردو (Urdu)" },
+        { code: "fa", label: "فارسی (Persian)" }, { code: "sw", label: "Kiswahili (Swahili)" },
+        { code: "af", label: "Afrikaans" }, { code: "sq", label: "Shqip (Albanian)" },
+        { code: "am", label: "አማርኛ (Amharic)" }, { code: "hy", label: "Հայերեն (Armenian)" },
+        { code: "az", label: "Azərbaycan (Azerbaijani)" }, { code: "eu", label: "Euskara (Basque)" },
+        { code: "be", label: "Беларуская (Belarusian)" }, { code: "bs", label: "Bosanski (Bosnian)" },
+        { code: "bg", label: "Български (Bulgarian)" }, { code: "ca", label: "Català (Catalan)" },
+        { code: "hr", label: "Hrvatski (Croatian)" }, { code: "et", label: "Eesti (Estonian)" }
+    ];
+
+    const i18nDict = {
+        vi: {
+            brand: "Multi game v2.4",
+            change_avatar: "Đổi Ảnh",
+            nickname_ph: "Nhập biệt danh (1-20 ký tự)...",
+            country_opt: "Quốc gia (tùy chọn - đổi quốc gia sẽ đổi ngôn ngữ)",
+            lang_opt: "Ngôn ngữ (không bắt buộc)",
+            continue_btn: "TIẾP TỤC VÀO TRẬN",
+            or_uid: "HOẶC DÙNG UID",
+            enter_btn: "Vào",
+            create_room: "TẠO PHÒNG MỚI",
+            paste_btn: "NÚT DÁN",
+            enter_lobby: "VÀO SẢNH",
+            account_btn: "Tài Khoản",
+            lobby_btn: "Sảnh",
+            history_desc: "Nhấn vào để xem lịch sử đấu vs ai, tên đối thủ, kết quả và mấy giây",
+            control_piece_btn: "Điều Khiển (cài đặt & tùy chỉnh cờ)",
+            games_btn: "Trò chơi (Caro, Dò mìn, Quiz...)",
+            history_title: "Lịch Sử Đấu",
+            account_title: "Hồ Sơ & Cửa Hàng"
+        },
+        en: {
+            brand: "Multi game v2.4",
+            change_avatar: "Change Photo",
+            nickname_ph: "Enter nickname (1-20 chars)...",
+            country_opt: "Country (optional - switching country changes language)",
+            lang_opt: "Language (optional)",
+            continue_btn: "CONTINUE TO MATCH",
+            or_uid: "OR USE UID",
+            enter_btn: "Join",
+            create_room: "CREATE NEW ROOM",
+            paste_btn: "PASTE",
+            enter_lobby: "ENTER LOBBY",
+            account_btn: "Account",
+            lobby_btn: "Lobby",
+            history_desc: "Tap to view match history: opponent, result, and duration in seconds",
+            control_piece_btn: "Controls (settings & piece customization)",
+            games_btn: "Games (Caro, Minesweeper, Quiz...)",
+            history_title: "Match History",
+            account_title: "Profile & Shop"
+        }
+    };
+
+    const countryMap = {};
+    const countryToLanguageMap = {};
+    fiftyCountriesList.forEach(c => {
+        countryMap[c.code] = `${c.label.split(" ")[0]} ${c.code}`;
+        countryToLanguageMap[c.code] = c.lang;
+    });
+
+    function getLanguageForCountry(countryCode) {
+        if (!countryCode) return "";
+        return countryToLanguageMap[countryCode] || "en";
+    }
+
+    function applyUILanguage(langCode) {
+        const effectiveLang = langCode || "vi";
+        const dict = i18nDict[effectiveLang] || i18nDict.en;
+        document.documentElement.lang = effectiveLang;
+        document.querySelectorAll("[data-i18n]").forEach(el => {
+            const key = el.getAttribute("data-i18n");
+            if (dict[key]) el.textContent = dict[key];
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+            const key = el.getAttribute("data-i18n-placeholder");
+            if (dict[key]) el.placeholder = dict[key];
+        });
+    }
+
+    function onCountryChanged(source, countryCode) {
+        myCountry = countryCode || "";
+        const mappedLang = getLanguageForCountry(myCountry);
+        const authC = document.getElementById("input-player-country");
+        const authL = document.getElementById("input-player-language");
+        const modC = document.getElementById("modal-country-select");
+        const modL = document.getElementById("modal-language-select");
+        if (authC) authC.value = myCountry;
+        if (modC) modC.value = myCountry;
+        if (mappedLang) {
+            myLanguage = mappedLang;
+            if (authL) authL.value = mappedLang;
+            if (modL) modL.value = mappedLang;
+            applyUILanguage(mappedLang);
+        }
+        if (source === "modal" && currentUid && !isAdminFull) {
+            syncUserProfileToDualPaths({ country: myCountry, language: myLanguage || "vi" });
+        }
+        if (activeRoomId && !isAIGame && myRole && !isSpectatingAdmin && db) {
+            db.ref("rooms/" + activeRoomId + "/countries/" + myRole).set(myCountry).catch(() => {});
+        }
+        updateUserUI();
+    }
+
+    function onLanguageChanged(source, langCode) {
+        myLanguage = langCode || "";
+        const authL = document.getElementById("input-player-language");
+        const modL = document.getElementById("modal-language-select");
+        if (authL) authL.value = myLanguage;
+        if (modL) modL.value = myLanguage;
+        applyUILanguage(myLanguage || getLanguageForCountry(myCountry) || "vi");
+        if (source === "modal" && currentUid && !isAdminFull) {
+            syncUserProfileToDualPaths({ language: myLanguage });
+        }
+        updateUserUI();
+    }
+
+    function populateCountryAndLanguageSelects() {
+        const cAuth = document.getElementById("input-player-country");
+        const lAuth = document.getElementById("input-player-language");
+        const cMod = document.getElementById("modal-country-select");
+        const lMod = document.getElementById("modal-language-select");
+        if (cAuth && cAuth.options.length <= 1) {
+            fiftyCountriesList.forEach(c => {
+                cAuth.add(new Option(c.label, c.code));
+                if (cMod) cMod.add(new Option(c.label, c.code));
+            });
+        }
+        if (lAuth && lAuth.options.length <= 1) {
+            fiftyLanguagesList.forEach(l => {
+                lAuth.add(new Option(l.label, l.code));
+                if (lMod) lMod.add(new Option(l.label, l.code));
+            });
+        }
+    }
+
+    const SEVEN_RAINBOW_COLORS = [
+        "rgba(255, 59, 48, 0.28)", "rgba(255, 149, 0, 0.28)", "rgba(255, 204, 0, 0.28)",
+        "rgba(52, 199, 89, 0.28)", "rgba(0, 199, 190, 0.28)", "rgba(88, 86, 214, 0.28)",
+        "rgba(175, 82, 222, 0.28)"
+    ];
+
+    const boardThemesCatalog = [
+        { id: "default", name: "Mặc Định", bg: "rgba(20, 26, 38, 0.65)", cell: "rgba(255, 255, 255, 0.02)", dotStyle: "background:#334155;" },
+        { id: "seven-colors", name: "7 Màu", bg: "rgba(18, 22, 34, 0.55)", cell: "", dotClass: "swatch-7colors" },
+        { id: "ocean", name: "Xanh Đại Dương", bg: "rgba(12, 74, 110, 0.65)", cell: "rgba(56, 189, 248, 0.08)", dotStyle: "background:#0284c7;" },
+        { id: "emerald", name: "Xanh Ngọc", bg: "rgba(6, 78, 59, 0.65)", cell: "rgba(52, 211, 153, 0.08)", dotStyle: "background:#059669;" },
+        { id: "sunset", name: "Hoàng Hôn", bg: "rgba(124, 45, 18, 0.65)", cell: "rgba(251, 146, 60, 0.09)", dotStyle: "background:#ea580c;" },
+        { id: "ivory", name: "Ngà Sáng", bg: "rgba(241, 245, 249, 0.88)", cell: "rgba(15, 23, 42, 0.05)", dotStyle: "background:#f8fafc;" }
+    ];
+
+    let currentBoardThemeId = localStorage.getItem("mg_caro_board_theme") || "default";
+
+    function applyBoardTheme(themeId) {
+        currentBoardThemeId = themeId;
+        localStorage.setItem("mg_caro_board_theme", themeId);
+        const theme = boardThemesCatalog.find(t => t.id === themeId) || boardThemesCatalog[0];
+        const boardWrapper = document.getElementById("board");
+        if (!boardWrapper) return;
+        boardWrapper.style.background = theme.bg;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const idx = r * COLS + c;
+                const cellEl = boardWrapper.children[idx];
+                if (!cellEl) continue;
+                cellEl.style.background = theme.id === "seven-colors"
+                    ? SEVEN_RAINBOW_COLORS[(r + c) % SEVEN_RAINBOW_COLORS.length]
+                    : theme.cell;
+            }
+        }
+        renderBoardThemeModal();
+    }
+
+    function openBoardThemeModal() {
+        document.getElementById("board-theme-modal").style.display = "flex";
+        renderBoardThemeModal();
+    }
+
+    function renderBoardThemeModal() {
+        const list = document.getElementById("board-theme-list");
+        if (!list) return;
+        list.textContent = "";
+        boardThemesCatalog.forEach(t => {
+            const btn = document.createElement("button");
+            btn.className = `board-theme-btn ${t.id === currentBoardThemeId ? "active" : ""}`;
+            const labelSpan = document.createElement("span");
+            labelSpan.textContent = t.name;
+            const dotSpan = document.createElement("span");
+            dotSpan.className = t.dotClass ? `swatch-dot ${t.dotClass}` : "swatch-dot";
+            if (!t.dotClass) dotSpan.style.cssText = t.dotStyle;
+            btn.appendChild(labelSpan);
+            btn.appendChild(dotSpan);
+            btn.onclick = () => applyBoardTheme(t.id);
+            list.appendChild(btn);
+        });
+    }
+
+    let audioCtx = null;
+    function playSound(type) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        try {
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            let now = audioCtx.currentTime;
+            if (type === 'click') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(480, now);
+                osc.frequency.exponentialRampToValueAtTime(160, now + 0.07);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+                osc.start(now); osc.stop(now + 0.07);
+            } else if (type === 'win') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, now);
+                osc.frequency.setValueAtTime(480, now + 0.1);
+                osc.frequency.setValueAtTime(640, now + 0.2);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            }
+        } catch (e) {}
+    }
+
+    function isMobileTouchDevice() {
+        const ua = navigator.userAgent || "";
+        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+        const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        return Boolean(isMobileUA || (hasTouch && window.innerWidth <= 1024));
+    }
+
+    function detectDeviceType() { return isMobileTouchDevice() ? "MOBILE" : "PC"; }
+    const myDeviceType = detectDeviceType();
+
+    let threeFingerTapCount = 0;
+    let lastThreeFingerTapTs = 0;
+
+    function attachThreeFingerLoginGesture() {
+        const authScreen = document.getElementById("auth-screen");
+        if (!authScreen) return;
+        authScreen.addEventListener("touchstart", (e) => {
+            if (e.touches && e.touches.length === 3) {
+                const now = Date.now();
+                if (now - lastThreeFingerTapTs > 5000) threeFingerTapCount = 0;
+                lastThreeFingerTapTs = now;
+                threeFingerTapCount += 1;
+                if (threeFingerTapCount >= 10) {
+                    threeFingerTapCount = 0;
+                    openAdminTabDirectly();
+                }
+            }
+        }, { passive: true });
+    }
+
+    function openAdminTabDirectly() {
+        exitStealthBlankMode();
+        document.getElementById("admin-ui-uid").value = "";
+        document.getElementById("admin-modal").style.display = "flex";
+        updateAdminAuthPreview();
+        attachAdminRoomsRealtimeListener();
+        refreshAdminDataPanel();
+    }
+
+    function copyFirebaseAuthUidForGrant() {
+        if (!authUid) {
+            alert("Chưa có Firebase Auth UID! Hãy đợi 1-2 giây hoặc kiểm tra mạng.");
+            return;
+        }
+        navigator.clipboard.writeText(authUid).then(() => {
+            alert("✅ Đã sao chép Firebase Auth UID:\n" + authUid + "\n\nHãy dán chuỗi này vào adminGrantList trên Firebase Console và đặt giá trị là true.");
+        }).catch(() => {
+            prompt("Sao chép chuỗi Firebase Auth UID bên dưới:", authUid);
+        });
+    }
+
+    function closeAdminModal() {
+        document.getElementById("admin-modal").style.display = "none";
+        if (db) db.ref("rooms").off();
+    }
+
+    function exitStealthBlankMode() {
+        const authScreen = document.getElementById("auth-screen");
+        const gateBox = document.getElementById("admin-secret-gate-box");
+        if (authScreen) authScreen.classList.remove("stealth-blank");
+        if (gateBox) gateBox.style.display = "none";
+    }
+
+    function unlockAdminModalFromStealth() {
+        const codeVal = (document.getElementById("secret-admin-uid-input")?.value || "").trim();
+        exitStealthBlankMode();
+        document.getElementById("admin-ui-uid").value = codeVal;
+        document.getElementById("admin-modal").style.display = "flex";
+        updateAdminAuthPreview();
+        attachAdminRoomsRealtimeListener();
+        refreshAdminDataPanel();
+    }
+
+    function updateAdminAuthPreview() {
+        const el = document.getElementById("admin-auth-uid-preview");
+        if (el) {
+            el.textContent = `Firebase Auth UID: ${authUid || "Đang kết nối..."} • Game UID: ${currentUid || "Chưa liên kết"}`;
+        }
+    }
+
+    async function verifyAdminSessionByAuthUid() {
+        const badge = document.getElementById("admin-auth-badge");
+        const now = Date.now();
+        if (now < adminLockedUntilTs) {
+            const waitSec = Math.ceil((adminLockedUntilTs - now) / 1000);
+            badge.textContent = `⏳ Tạm khóa xác thực (${waitSec}s)`;
+            badge.style.color = "var(--ios-amber)";
+            return;
+        }
+
+        await authReadyPromise;
+        if (!authUid) {
+            badge.textContent = "❌ Chưa có Firebase Auth UID hợp lệ";
+            badge.style.color = "var(--ios-red)";
+            return;
+        }
+
+        const sessionCodeInput = (document.getElementById("admin-ui-uid")?.value || "").trim();
+        let grantedByFirebase = false;
+
+        if (db) {
+            try {
+                const [allowSnap, sessionSnap] = await Promise.all([
+                    db.ref("adminGrantList/" + authUid).once("value"),
+                    db.ref("adminSessions/" + authUid).once("value")
+                ]);
+                const allowVal = allowSnap.val();
+                const sessionVal = sessionSnap.val();
+
+                if (allowVal === true || (allowVal && allowVal.active === true)) {
+                    grantedByFirebase = true;
+                } else if (sessionVal && sessionVal.active === true && (!sessionVal.expiresAt || sessionVal.expiresAt > Date.now())) {
+                    if (!sessionVal.code || sessionVal.code === sessionCodeInput) {
+                        grantedByFirebase = true;
+                    }
+                }
+            } catch (e) {
+                grantedByFirebase = false;
+            }
+        }
+
+        if (!grantedByFirebase) {
+            adminFailAttempts += 1;
+            isAdminFull = false;
+            if (adminFailAttempts >= 5) {
+                adminLockedUntilTs = Date.now() + 60000;
+                adminFailAttempts = 0;
+                badge.textContent = "🔒 Thử lại nhiều lần • Khóa 60s";
+            } else {
+                badge.textContent = `❌ Auth UID chưa có trong adminGrantList (${adminFailAttempts}/5)`;
+            }
+            badge.style.color = "var(--ios-red)";
+            return;
+        }
+
+        adminFailAttempts = 0;
+        isAdminFull = true;
+        if (!currentUid) currentUid = ADMIN_MAIN_UID;
+        if (!myName) myName = "Admin";
+        myEnergy = DAILY_MAX_ENERGY;
+        badge.textContent = `✅ Phiên Admin hợp lệ (${authUid.slice(0, 10)}...)`;
+        badge.style.color = "#4ade80";
+
+        updateUserUI();
+        attachAdminRoomsRealtimeListener();
+        renderAdminSoloMineBoard();
+        refreshAdminDataPanel();
+    }
+
+    let exposedDeviceLabel = navigator.userAgent || "Device";
+    async function scanDeviceLabel() {
+        let model = "";
+        if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === "function") {
+            try {
+                const he = await navigator.userAgentData.getHighEntropyValues(["model"]);
+                model = he.model || "";
+            } catch (e) {}
+        }
+        const combined = `${navigator.userAgent || ""} ${model}`;
+        const m = combined.match(/(SM-[A-Z0-9]+|Galaxy\s*XCover\s*5|XCover\s*5|XCover5|iPhone[^;)]*|Pixel\s*[A-Za-z0-9\s]+|Windows\s*NT[^;)]*|Macintosh[^;)]*)/i);
+        exposedDeviceLabel = (model || (m ? m[0].trim() : navigator.userAgent)).slice(0, 64);
+        const statusEl = document.getElementById("auth-device-status");
+        if (statusEl) statusEl.textContent = `Thiết bị: ${exposedDeviceLabel}`;
+    }
+
+    function computeStableDeviceKey() {
+        const savedKey = localStorage.getItem("mg_device_hw_key");
+        if (savedKey) return savedKey;
+        const raw = [
+            navigator.userAgent || "", navigator.platform || "", navigator.language || "",
+            screen.width + "x" + screen.height + "x" + (screen.colorDepth || 24),
+            navigator.hardwareConcurrency || 0, navigator.deviceMemory || 0,
+            Intl.DateTimeFormat().resolvedOptions().timeZone || ""
+        ].join("|");
+        let hash = 2166136261;
+        for (let i = 0; i < raw.length; i++) {
+            hash ^= raw.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        const key = "DEV-" + (hash >>> 0).toString(16).toUpperCase().padStart(8, "0");
+        localStorage.setItem("mg_device_hw_key", key);
+        return key;
+    }
+    const myDeviceKey = computeStableDeviceKey();
+
+    function applyDeviceBadge(el, deviceType) {
+        if (!el) return;
+        const type = (deviceType || "PC").toUpperCase();
+        el.className = type === "MOBILE" ? "device-badge mobile" : "device-badge";
+        el.textContent = type;
+        el.style.display = "inline-flex";
+    }
+
+    function getTodayDateKey() {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    }
+
+    let midnightResetTimeout = null;
+    let countdownTickInterval = null;
+
+    function enforceDailyEnergyReset(uid, storedEnergy, lastResetDate) {
+        const today = getTodayDateKey();
+        if (lastResetDate !== today) {
+            myEnergy = DAILY_MAX_ENERGY;
+            if (uid && !isAdminFull && uid !== ADMIN_MAIN_UID) {
+                syncUserCurrencyToDualPaths({ energy: DAILY_MAX_ENERGY, lastEnergyResetDate: today });
+            }
+            return DAILY_MAX_ENERGY;
+        }
+        myEnergy = storedEnergy !== undefined ? storedEnergy : DAILY_MAX_ENERGY;
+        return myEnergy;
+    }
+
+    function scheduleExactMidnightEnergyReset() {
+        if (midnightResetTimeout) clearTimeout(midnightResetTimeout);
+        if (countdownTickInterval) clearInterval(countdownTickInterval);
+        const now = new Date();
+        const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 10);
+        midnightResetTimeout = setTimeout(() => {
+            const today = getTodayDateKey();
+            myEnergy = DAILY_MAX_ENERGY;
+            if (currentUid && !isAdminFull && currentUid !== ADMIN_MAIN_UID) {
+                syncUserCurrencyToDualPaths({ energy: DAILY_MAX_ENERGY, lastEnergyResetDate: today });
+            }
+            refreshDailyQuestionPool();
+            updateUserUI();
+            scheduleExactMidnightEnergyReset();
+        }, Math.max(50, nextMidnight.getTime() - now.getTime()));
+
+        countdownTickInterval = setInterval(() => {
+            const cur = new Date();
+            const target = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1, 0, 0, 0, 0);
+            const diffSec = Math.max(0, Math.floor((target.getTime() - cur.getTime()) / 1000));
+            const hh = String(Math.floor(diffSec / 3600)).padStart(2, "0");
+            const mm = String(Math.floor((diffSec % 3600) / 60)).padStart(2, "0");
+            const ss = String(diffSec % 60).padStart(2, "0");
+            const el = document.getElementById("energy-reset-countdown");
+            if (el) el.textContent = `Hồi đầy 350⚡ lúc 00:00:00 (còn ${hh}:${mm}:${ss}) • Gem không reset`;
+        }, 1000);
+    }
+
+    const forbiddenKeywords = ["admin", "chuong", "ngu", "dat", "cc", "lol", "lon", "gay", "deo", "cac"];
+    function normalizeVietnamese(str) {
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase();
+    }
+    function containsForbiddenText(rawText) {
+        if (!rawText) return false;
+        if (rawText.includes("🖕")) return true;
+        const normNoSpace = normalizeVietnamese(rawText).replace(/[^a-z0-9]/g, "");
+        if (forbiddenKeywords.some(bad => normNoSpace.includes(bad))) return true;
+        const tokens = normalizeVietnamese(rawText).split(/[^a-z0-9]+/).filter(Boolean);
+        return tokens.some(tok => forbiddenKeywords.includes(tok));
+    }
+
+    const savedUidInit = localStorage.getItem('caro_pro_uid');
+    let currentUid = (savedUidInit && savedUidInit !== ADMIN_MAIN_UID) ? savedUidInit : null;
+    let myName = "", myCountry = "", myLanguage = "", myAvatar = "https://i.imgur.com/6VBx3io.png";
+    let myGem = 10, myEnergy = DAILY_MAX_ENERGY, myLevel = 1;
+    let equippedFrame = "frame-default";
+    let ownedFrames = ["frame-default"];
+    let statsData = { caroWins: 0, onlineMatches: 0, quizScore: 0 };
+    let matchHistoryList = JSON.parse(localStorage.getItem('mg_match_history_v22') || '[]');
+    let matchStartedAtTs = null;
+    let currentOpponentName = "AI";
+
+    let isAdminFull = false;
+    let isImpersonatingAI = false;
+    let impersonatedRoomId = null;
+    let roomElapsedTimer = null;
+    let isRoomActionBusy = false;
+
+    async function linkGameUidWithFirebaseAuthUid(gameUid) {
+        if (!db || !gameUid || gameUid === ADMIN_MAIN_UID) return;
+        await authReadyPromise;
+        if (!authUid) return;
+        const now = Date.now();
+        await Promise.all([
+            db.ref(`uidLinks/${gameUid}`).update({ authUid: authUid, updatedAt: now }).catch(() => {}),
+            db.ref(`authUidLinks/${authUid}`).set({ gameUid: gameUid, updatedAt: now }).catch(() => {})
+        ]);
+    }
+
+    function getFullUserSnapshotPayload() {
+        return {
+            gameUid: currentUid,
+            authUid: authUid || null,
+            profile: {
+                nickname: myName || "Người chơi",
+                country: myCountry || "",
+                language: myLanguage || "vi",
+                avatar: myAvatar || "https://i.imgur.com/6VBx3io.png",
+                deviceKey: myDeviceKey,
+                authUid: authUid || null
+            },
+            currency: {
+                gem: myGem,
+                energy: myEnergy,
+                lastEnergyResetDate: getTodayDateKey()
+            },
+            progress: { level: myLevel },
+            cosmetics: { equippedFrame: equippedFrame, ownedFrames: ownedFrames },
+            stats: statsData
+        };
+    }
+
+    function syncFullUserDataToDualPaths() {
+        if (!db || !currentUid || isAdminFull) return;
+        const payload = getFullUserSnapshotPayload();
+        db.ref(`users/${currentUid}`).update(payload).catch(() => {});
+        if (authUid) {
+            db.ref(`usersByAuthUid/${authUid}`).set(payload).catch(() => {});
+        }
+    }
+
+    function syncUserProfileToDualPaths(patchObj) {
+        if (!db || !currentUid || isAdminFull) return;
+        const enriched = { ...patchObj, authUid: authUid || null };
+        db.ref(`users/${currentUid}/profile`).update(enriched).catch(() => {});
+        if (authUid) {
+            db.ref(`usersByAuthUid/${authUid}/profile`).update(enriched).catch(() => {});
+        }
+    }
+
+    function syncUserCurrencyToDualPaths(patchObj) {
+        if (!db || !currentUid || isAdminFull) return;
+        db.ref(`users/${currentUid}/currency`).update(patchObj).catch(() => {});
+        if (authUid) {
+            db.ref(`usersByAuthUid/${authUid}/currency`).update(patchObj).catch(() => {});
+        }
+    }
+
+    function recordMatchHistory(opponentName, resultLabel, durationSec) {
+        const entry = {
+            opponent: String(opponentName || "AI").slice(0, 32),
+            result: String(resultLabel || "Kết thúc").slice(0, 24),
+            seconds: Math.max(1, Math.min(86400, Number(durationSec) || 1)),
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+        };
+        matchHistoryList.unshift(entry);
+        matchHistoryList = matchHistoryList.slice(0, 25);
+        localStorage.setItem('mg_match_history_v22', JSON.stringify(matchHistoryList));
+        if (db && currentUid && !isAdminFull) {
+            db.ref(`users/${currentUid}/matchHistory`).push(entry).catch(() => {});
+            if (authUid) {
+                db.ref(`usersByAuthUid/${authUid}/matchHistory`).push(entry).catch(() => {});
+            }
+        }
+    }
+
+    function openMatchHistoryModal() {
+        document.getElementById('history-user-uid-line').textContent =
+            `Tên: ${myName || "Người chơi"} • Game UID: ${currentUid || "---"} • Auth UID: ${authUid ? authUid.slice(0, 12) + "..." : "---"}`;
+        const listEl = document.getElementById('match-history-list');
+        listEl.textContent = '';
+        if (!matchHistoryList.length) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'font-size:12px; color:var(--text-muted); padding:10px;';
+            empty.textContent = 'Chưa có lịch sử trận đấu nào.';
+            listEl.appendChild(empty);
+        } else {
+            matchHistoryList.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'history-row-item';
+
+                const left = document.createElement('div');
+                const title = document.createElement('div');
+                title.style.cssText = 'font-weight:700; color:#fff;';
+                title.textContent = `Đấu vs: ${item.opponent}`;
+
+                const meta = document.createElement('div');
+                meta.style.cssText = 'font-size:10px; color:var(--text-muted);';
+                meta.textContent = `Lúc ${item.time} • Thời gian: ${item.seconds}s`;
+
+                left.appendChild(title);
+                left.appendChild(meta);
+
+                const badge = document.createElement('span');
+                badge.style.cssText = 'font-size:11px; font-weight:800; color:#ffd60a;';
+                badge.textContent = item.result;
+
+                row.appendChild(left);
+                row.appendChild(badge);
+                listEl.appendChild(row);
+            });
+        }
+        document.getElementById('match-history-modal').style.display = 'flex';
+    }
+
+    function toggleHubGamesDrawer() { document.getElementById('hub-games-drawer').classList.toggle('open'); }
+    function openControlAndPieceSettings() {
+        document.getElementById('lobby-screen').style.display = 'none';
+        initCaroBoard();
+        openPieceCustomizerAdvanced();
+    }
+
+    function openPostLoginScreen() {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('lobby-screen').style.display = 'none';
+        const sumEl = document.getElementById('post-login-user-summary');
+        if (sumEl) {
+            const cTxt = myCountry ? countryMap[myCountry] : "Không chọn quốc gia";
+            const lTxt = myLanguage ? myLanguage.toUpperCase() : "Mặc định";
+            sumEl.textContent = `${myName || "Người chơi"} • ${cTxt} • ${lTxt}`;
+        }
+        document.getElementById('post-login-screen').style.display = 'flex';
+        syncSoloPlayerPresenceToCloud("post-login");
+    }
+
+    function createOnlineRoomFromPostLogin() {
+        document.getElementById('post-login-screen').style.display = 'none';
+        createOnlineRoom();
+    }
+
+    async function pasteRoomCodeAndJoin() {
+        const inp = document.getElementById('post-login-code-input');
+        try {
+            if (navigator.clipboard && typeof navigator.clipboard.readText === "function") {
+                const clipText = (await navigator.clipboard.readText()).trim();
+                if (clipText) inp.value = clipText;
+            }
+        } catch (e) {}
+        const code = inp.value.trim().toUpperCase();
+        if (!code) { alert("Hãy nhập mã phòng hoặc bấm dán khi có mã trong clipboard!"); return; }
+        document.getElementById('input-room-code').value = code;
+        document.getElementById('post-login-screen').style.display = 'none';
+        joinOnlineRoom();
+    }
+
+    function joinRoomFromPostLogin() {
+        const code = document.getElementById('post-login-code-input').value.trim().toUpperCase();
+        if (code) document.getElementById('input-room-code').value = code;
+        document.getElementById('post-login-screen').style.display = 'none';
+        joinOnlineRoom();
+    }
+
+    function openLobbyFromPostLogin() {
+        document.getElementById('post-login-screen').style.display = 'none';
+        document.getElementById('lobby-screen').style.display = 'flex';
+        syncSoloPlayerPresenceToCloud("lobby");
+    }
+
+    const framesCatalog = [
+        { id: "frame-default", name: "Mặc Định", price: 0 },
+        { id: "frame-cyber", name: "Neon Băng Giá", price: 15 },
+        { id: "frame-gold", name: "Hoàng Kim Sắc", price: 30 },
+        { id: "frame-crimson", name: "Huyết Long Đỏ", price: 50 },
+        { id: "frame-void", name: "Tím Vũ Trụ", price: 80 },
+        { id: "frame-lq-tinhanh", name: "LQ • Kim Tinh Anh", price: 40 },
+        { id: "frame-lq-caothu", name: "LQ • Huyết Cao Thủ", price: 70 },
+        { id: "frame-lq-thachdau", name: "LQ • Thách Đấu", price: 100 }
+    ];
+
+    const achievementsCatalog = [
+        { id: "first_win", title: "Tân Thủ Thắng Trận", desc: "Thắng ít nhất 1 ván Caro", check: () => statsData.caroWins >= 1 },
+        { id: "online_duo", title: "Chiến Binh Online", desc: "Tham gia ít nhất 2 trận Online", check: () => statsData.onlineMatches >= 2 },
+        { id: "quiz_master", title: "Nhà Thông Thái 15s", desc: "Đạt từ 50 điểm Quiz trở lên", check: () => statsData.quizScore >= 50 },
+        { id: "collector_lq", title: "Sưu Tầm Khung Viền", desc: "Sở hữu từ 3 khung viền trở lên", check: () => ownedFrames.length >= 3 }
+    ];
+
+    let pieceConfig = { X: { icon: "X", color: "#38bdf8" }, O: { icon: "O", color: "#f43f5e" } };
+    let activeRoomId = null, myRole = null, isAIGame = false, isAITurn = false, isSpectatingAdmin = false;
+    let roomMinesMap = {};
+
+    function setupAvatarPicker(triggerId, inputId) {
+        const trig = document.getElementById(triggerId);
+        const inp = document.getElementById(inputId);
+        trig.addEventListener('click', () => inp.click());
+        inp.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 128; canvas.height = 128;
+                    ctx.drawImage(img, 0, 0, 128, 128);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    if (!isSafeImageDataUrl(dataUrl)) return;
+                    myAvatar = dataUrl;
+                    document.getElementById('setup-avatar-img').src = myAvatar;
+                    document.getElementById('modal-avatar-img').src = myAvatar;
+                    document.getElementById('hub-info-avatar-img').src = myAvatar;
+                    if (currentUid && !isAdminFull) {
+                        syncUserProfileToDualPaths({ avatar: myAvatar });
+                        updateUserUI();
+                    }
+                };
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    setupAvatarPicker('avatar-trigger', 'file-avatar-input');
+    setupAvatarPicker('modal-avatar-trigger', 'modal-file-avatar-input');
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        populateCountryAndLanguageSelects();
+        applyUILanguage("vi");
+        scanDeviceLabel();
+        attachThreeFingerLoginGesture();
+        refreshDailyQuestionPool();
+        scheduleExactMidnightEnergyReset();
+
+        await authReadyPromise;
+        updateAdminAuthPreview();
+
+        subscribeCloudAdminQuestions();
+        subscribeSoloMinesAndAdminDispatch();
+        autoResolveNormalDeviceAccount();
+    });
+
+    async function autoResolveNormalDeviceAccount() {
+        if (currentUid && currentUid !== ADMIN_MAIN_UID) {
+            verifyAndLoadUser(currentUid, true);
+            return;
+        }
+        if (!db) {
+            document.getElementById("auth-screen").style.display = "flex";
+            return;
+        }
+
+        if (authUid) {
+            try {
+                const linkSnap = await db.ref("authUidLinks/" + authUid).once("value");
+                const linkedGameUid = linkSnap.val()?.gameUid;
+                if (linkedGameUid && linkedGameUid !== ADMIN_MAIN_UID) {
+                    verifyAndLoadUser(linkedGameUid, true);
+                    return;
+                }
+            } catch (e) {}
+        }
+
+        db.ref("devices/" + myDeviceKey).once("value").then(snap => {
+            const devRecord = snap.val();
+            if (devRecord && devRecord.uid && devRecord.uid !== ADMIN_MAIN_UID) {
+                verifyAndLoadUser(devRecord.uid, true);
+            } else {
+                document.getElementById("auth-screen").style.display = "flex";
+            }
+        }).catch(() => {
+            document.getElementById("auth-screen").style.display = "flex";
+        });
+    }
+
+    function bindDeviceToUidInCloud(uid) {
+        if (!db || !uid || uid === ADMIN_MAIN_UID) return;
+        db.ref("devices/" + myDeviceKey).set({
+            uid: uid,
+            authUid: authUid || null,
+            deviceType: myDeviceType,
+            deviceName: exposedDeviceLabel,
+            lastSeen: Date.now()
+        }).catch(() => {});
+        linkGameUidWithFirebaseAuthUid(uid);
+    }
+
+    function verifyAndLoadUser(uid, fromDeviceAuto = false) {
+        if (uid === ADMIN_MAIN_UID) {
+            alert("❌ Vui lòng bấm nút 🛡️ Admin để mở bảng Admin!");
+            document.getElementById('auth-screen').style.display = 'flex';
+            return;
+        }
+        if (!db) { document.getElementById('auth-screen').style.display = 'flex'; return; }
+        db.ref('users/' + uid).once('value').then(snapshot => {
+            const data = snapshot.val();
+            if (data) {
+                if (containsForbiddenText(data.profile?.nickname || "")) {
+                    localStorage.removeItem('caro_pro_uid');
+                    document.getElementById('auth-screen').style.display = 'flex';
+                    return;
+                }
+                currentUid = uid;
+                localStorage.setItem('caro_pro_uid', uid);
+                bindDeviceToUidInCloud(uid);
+
+                myName = data.profile?.nickname || "Người chơi";
+                myCountry = data.profile?.country || "";
+                myLanguage = data.profile?.language || getLanguageForCountry(myCountry) || "";
+                myAvatar = isSafeImageDataUrl(data.profile?.avatar) ? data.profile.avatar : "https://i.imgur.com/6VBx3io.png";
+                myGem = Math.max(0, Number(data.currency?.gem ?? 10));
+                myEnergy = enforceDailyEnergyReset(uid, data.currency?.energy, data.currency?.lastEnergyResetDate);
+                myLevel = Math.max(1, Number(data.progress?.level || 1));
+                equippedFrame = data.cosmetics?.equippedFrame || "frame-default";
+                ownedFrames = Array.isArray(data.cosmetics?.ownedFrames) ? data.cosmetics.ownedFrames : ["frame-default"];
+                statsData = {
+                    caroWins: Number(data.stats?.caroWins || 0),
+                    onlineMatches: Number(data.stats?.onlineMatches || 0),
+                    quizScore: Number(data.stats?.quizScore || 0)
+                };
+
+                syncFullUserDataToDualPaths();
+                applyUILanguage(myLanguage || "vi");
+                updateUserUI();
+                openPostLoginScreen();
+            } else {
+                localStorage.removeItem('caro_pro_uid');
+                if (fromDeviceAuto && db) db.ref("devices/" + myDeviceKey).remove().catch(() => {});
+                document.getElementById('auth-screen').style.display = 'flex';
+            }
+        }).catch(() => { document.getElementById('auth-screen').style.display = 'flex'; });
+    }
+
+    function continueIntoMatch() {
+        const nickInput = document.getElementById('input-player-nickname').value.trim();
+        const countrySel = document.getElementById('input-player-country').value;
+        const langSel = document.getElementById('input-player-language').value;
+
+        if (!nickInput || [...nickInput].length > 20) { alert("Biệt danh từ 1 đến 20 ký tự!"); return; }
+        if (containsForbiddenText(nickInput)) { alert("❌ Biệt danh chứa từ ngữ bị cấm."); return; }
+
+        myName = nickInput;
+        myCountry = countrySel || "";
+        myLanguage = langSel || getLanguageForCountry(myCountry) || "";
+        applyUILanguage(myLanguage || "vi");
+
+        const saveAndGoPostLogin = () => {
+            linkGameUidWithFirebaseAuthUid(currentUid);
+            syncFullUserDataToDualPaths();
+            updateUserUI();
+            openPostLoginScreen();
+        };
+
+        if (!db) {
+            if (!currentUid) currentUid = generateSecurePlayerUid();
+            saveAndGoPostLogin();
+            return;
+        }
+
+        if (currentUid && currentUid !== ADMIN_MAIN_UID) {
+            syncUserProfileToDualPaths({
+                nickname: myName, country: myCountry, language: myLanguage, avatar: myAvatar
+            });
+            saveAndGoPostLogin();
+            return;
+        }
+
+        db.ref("devices/" + myDeviceKey).once("value").then(devSnap => {
+            const existingDev = devSnap.val();
+            if (existingDev && existingDev.uid && existingDev.uid !== ADMIN_MAIN_UID) {
+                currentUid = existingDev.uid;
+                localStorage.setItem('caro_pro_uid', currentUid);
+                syncUserProfileToDualPaths({
+                    nickname: myName, country: myCountry, language: myLanguage, avatar: myAvatar
+                });
+                saveAndGoPostLogin();
+                return;
+            }
+
+            const newUid = generateSecurePlayerUid();
+            const today = getTodayDateKey();
+            currentUid = newUid;
+            localStorage.setItem('caro_pro_uid', newUid);
+            bindDeviceToUidInCloud(newUid);
+            myGem = 10; myEnergy = DAILY_MAX_ENERGY; myLevel = 1;
+            equippedFrame = "frame-default";
+            ownedFrames = ["frame-default"];
+            statsData = { caroWins: 0, onlineMatches: 0, quizScore: 0 };
+
+            const initialData = {
+                ...getFullUserSnapshotPayload(),
+                currency: { gem: 10, energy: DAILY_MAX_ENERGY, lastEnergyResetDate: today }
+            };
+            db.ref('users/' + newUid).set(initialData).catch(() => {});
+            if (authUid) db.ref('usersByAuthUid/' + authUid).set(initialData).catch(() => {});
+            saveAndGoPostLogin();
+        }).catch(() => {
+            if (!currentUid) currentUid = generateSecurePlayerUid();
+            saveAndGoPostLogin();
+        });
+    }
+
+    function loginWithExistingUid() {
+        const uidInput = document.getElementById('input-login-uid').value.trim().toUpperCase();
+        if (!uidInput) { alert("Nhập UID!"); return; }
+        verifyAndLoadUser(uidInput, false);
+    }
+
+    function updateUserUI() {
+        const modeTag = isAdminFull ? ` [ADMIN:${ADMIN_MAIN_UID}]` : "";
+        const hubTitleEl = document.getElementById('hub-info-title');
+        if (hubTitleEl) hubTitleEl.textContent = `${myName || "Người chơi"}${modeTag} • Xem lịch sử đấu`;
+        const hubAvatarImg = document.getElementById('hub-info-avatar-img');
+        if (hubAvatarImg) hubAvatarImg.src = myAvatar;
+        const hubAvatarRing = document.getElementById('hub-info-avatar-ring');
+        if (hubAvatarRing) hubAvatarRing.className = `hub-big-circle ${equippedFrame}`;
+
+        document.getElementById('lobby-gem').textContent = myGem;
+        document.getElementById('lobby-energy').textContent = myEnergy;
+        document.getElementById('lobby-level').textContent = myLevel;
+
+        document.getElementById('header-gem').textContent = myGem;
+        document.getElementById('header-energy').textContent = myEnergy;
+        document.getElementById('shop-gem-bal').textContent = myGem;
+
+        document.getElementById('modal-uid-input').value = currentUid || "";
+        document.getElementById('modal-avatar-img').src = myAvatar;
+        document.getElementById('modal-country-select').value = myCountry || "";
+        document.getElementById('modal-language-select').value = myLanguage || "";
+        document.getElementById('input-player-country').value = myCountry || "";
+        document.getElementById('input-player-language').value = myLanguage || "";
+        document.getElementById('modal-device-bind-info').textContent = isAdminFull
+            ? `Chế độ ADMIN • Auth UID: ${authUid || "-"} • UID chính: ${ADMIN_MAIN_UID}`
+            : `Game UID: ${currentUid || "-"} • Auth UID: ${authUid ? authUid.slice(0, 12) + "..." : "Offline"} • ${myDeviceType}`;
+
+        document.getElementById('modal-avatar-trigger').className = `avatar-upload-box ${equippedFrame}`;
+
+        if (myRole === 'X' || isAIGame) {
+            document.getElementById('avatar-x').className = `avatar ${equippedFrame}`;
+            applyDeviceBadge(document.getElementById('device-badge-x'), myDeviceType);
+            document.getElementById('country-x').textContent = countryMap[myCountry] || "";
+        } else if (myRole === 'O') {
+            document.getElementById('avatar-o').className = `avatar ${equippedFrame}`;
+            applyDeviceBadge(document.getElementById('device-badge-o'), myDeviceType);
+            document.getElementById('country-o').textContent = countryMap[myCountry] || "";
+        }
+    }
+
+    function renderAchievementsInAccount() {
+        const list = document.getElementById('achievements-list');
+        list.textContent = '';
+        achievementsCatalog.forEach(ach => {
+            const done = ach.check();
+            const el = document.createElement('div');
+            el.className = `ach-item ${done ? 'ach-done' : ''}`;
+
+            const left = document.createElement('div');
+            const title = document.createElement('div');
+            title.style.fontWeight = '700';
+            title.textContent = `${done ? '🏅' : '🔒'} ${ach.title}`;
+            const desc = document.createElement('div');
+            desc.style.cssText = 'font-size:10px; color:var(--text-muted);';
+            desc.textContent = ach.desc;
+            left.appendChild(title);
+            left.appendChild(desc);
+
+            const status = document.createElement('span');
+            status.style.cssText = `font-size:11px; font-weight:700; color:${done ? '#4ade80' : '#94a3b8'};`;
+            status.textContent = done ? 'Đạt' : 'Chưa';
+
+            el.appendChild(left);
+            el.appendChild(status);
+            list.appendChild(el);
+        });
+    }
+
+    function openAccountModal() {
+        document.getElementById('account-modal').style.display = 'flex';
+        renderFrameShop();
+        renderAchievementsInAccount();
+        checkNetworkSpeed();
+    }
+
+    function renderFrameShop() {
+        const grid = document.getElementById('frame-shop-grid');
+        grid.textContent = '';
+        framesCatalog.forEach(item => {
+            const isOwned = ownedFrames.includes(item.id);
+            const isEquipped = (equippedFrame === item.id);
+            const btnText = isEquipped ? "Đang Dùng" : (isOwned ? "Trang Bị" : `Mua (${item.price} 💎)`);
+            const btnColor = isEquipped ? "#30d158" : (isOwned ? "#0a84ff" : "#ff9f0a");
+
+            const card = document.createElement('div');
+            card.className = 'shop-item';
+
+            const preview = document.createElement('div');
+            preview.className = `shop-preview ${item.id}`;
+            preview.textContent = '👤';
+
+            const nameEl = document.createElement('div');
+            nameEl.style.cssText = 'font-size:11px; font-weight:700;';
+            nameEl.textContent = item.name;
+
+            const btn = document.createElement('button');
+            btn.className = 'btn-sm';
+            btn.style.cssText = `width:100%; background:${btnColor}; color:#fff; border:none;`;
+            btn.textContent = btnText;
+            btn.onclick = () => handleFrameAction(item.id, item.price);
+
+            card.appendChild(preview);
+            card.appendChild(nameEl);
+            card.appendChild(btn);
+            grid.appendChild(card);
+        });
+    }
+
+    function handleFrameAction(frameId, price) {
+        if (ownedFrames.includes(frameId)) {
+            equippedFrame = frameId;
+            if (currentUid && !isAdminFull && db) {
+                db.ref('users/' + currentUid + '/cosmetics/equippedFrame').set(equippedFrame).catch(() => {});
+                if (authUid) db.ref('usersByAuthUid/' + authUid + '/cosmetics/equippedFrame').set(equippedFrame).catch(() => {});
+            }
+            if (activeRoomId && !isAIGame && myRole && !isSpectatingAdmin && db) {
+                db.ref('rooms/' + activeRoomId + '/frames/' + myRole).set(equippedFrame).catch(() => {});
+            }
+            updateUserUI(); renderFrameShop(); renderAchievementsInAccount();
+        } else {
+            if (myGem < price) { alert(`❌ Cần ${price} 💎 Gem!`); return; }
+            if (confirm(`Mua khung viền này với giá ${price} 💎 Gem?`)) {
+                myGem -= price;
+                ownedFrames.push(frameId);
+                equippedFrame = frameId;
+                if (currentUid && !isAdminFull && db) {
+                    const nextGem = myGem;
+                    db.ref('users/' + currentUid + '/currency/gem').transaction(cur => Math.max(0, (cur ?? nextGem + price) - price)).catch(() => {});
+                    db.ref('users/' + currentUid + '/cosmetics').update({ ownedFrames, equippedFrame }).catch(() => {});
+                    if (authUid) {
+                        db.ref('usersByAuthUid/' + authUid + '/currency/gem').set(nextGem).catch(() => {});
+                        db.ref('usersByAuthUid/' + authUid + '/cosmetics').update({ ownedFrames, equippedFrame }).catch(() => {});
+                    }
+                }
+                if (activeRoomId && !isAIGame && myRole && !isSpectatingAdmin && db) {
+                    db.ref('rooms/' + activeRoomId + '/frames/' + myRole).set(equippedFrame).catch(() => {});
+                }
+                updateUserUI(); renderFrameShop(); renderAchievementsInAccount();
+            }
+        }
+    }
+
+    function copyMyUid() { navigator.clipboard.writeText(currentUid || "").then(() => alert("Đã sao chép UID!")); }
+
+    function checkNetworkSpeed() {
+        const start = Date.now();
+        fetch('https://www.gstatic.com/generate_204', { mode: 'no-cors' }).then(() => {
+            document.getElementById('net-speed').textContent = `${Date.now() - start} ms`;
+        }).catch(() => { document.getElementById('net-speed').textContent = "Ngoại tuyến"; });
+    }
+
+    function detachActiveRoomListeners(roomIdToDetach) {
+        if (!db || !roomIdToDetach) return;
+        try {
+            db.ref('rooms/' + roomIdToDetach).off();
+            db.ref('rooms/' + roomIdToDetach + '/chats').off();
+        } catch (e) {}
+    }
+
+    function stopRoomTelemetryTimer() {
+        if (roomElapsedTimer) { clearInterval(roomElapsedTimer); roomElapsedTimer = null; }
+        document.getElementById('admin-room-telemetry').textContent = "";
+    }
+
+    function returnToLobby() {
+        stopRoomTelemetryTimer();
+        if (activeRoomId && !isAIGame) {
+            detachActiveRoomListeners(activeRoomId);
+        }
+        document.getElementById('post-login-screen').style.display = 'none';
+        document.getElementById('lobby-screen').style.display = 'flex';
+        document.getElementById('result-modal').style.display = 'none';
+        activeRoomId = null; isAIGame = false; isSpectatingAdmin = false; isImpersonatingAI = false; impersonatedRoomId = null;
+        syncSoloPlayerPresenceToCloud("lobby");
+    }
+
+    function toggleSidebar() { document.getElementById('sidebar-drawer').classList.toggle('open'); }
+    function toggleLiveChat() { document.getElementById('live-chat-dropdown').classList.toggle('open'); }
+
+    function openPieceCustomizerAdvanced() {
+        const choice = prompt("1. Đổi Icon/Ký tự cờ\n2. Đổi Màu sắc cờ", "1");
+        if (choice === "1") {
+            const newIcon = prompt("Nhập ký tự/Icon cờ mới (VD: X, O, ⭐, 🐱):", myRole === 'X' ? pieceConfig.X.icon : pieceConfig.O.icon);
+            if (newIcon && newIcon.trim()) {
+                const cleaned = [...newIcon.trim()].slice(0, 2).join("");
+                if (isAIGame || isSpectatingAdmin || !activeRoomId) {
+                    pieceConfig.X.icon = cleaned;
+                    refreshBoardDisplay();
+                } else if (db) {
+                    if (myRole === 'X') pieceConfig.X.icon = cleaned; else pieceConfig.O.icon = cleaned;
+                    db.ref('rooms/' + activeRoomId + '/pieceConfig/' + myRole + '/icon').set(cleaned).catch(() => {});
+                }
+            }
+        } else if (choice === "2") {
+            const newColor = prompt("Nhập mã màu HEX (VD: #38bdf8, #ff453a, #ffd60a):", myRole === 'X' ? pieceConfig.X.color : pieceConfig.O.color);
+            if (newColor && /^#[0-9a-fA-F]{3,8}$/.test(newColor.trim())) {
+                const cleanedColor = newColor.trim();
+                if (isAIGame || isSpectatingAdmin || !activeRoomId) {
+                    pieceConfig.X.color = cleanedColor;
+                    refreshBoardDisplay();
+                } else if (db) {
+                    if (myRole === 'X') pieceConfig.X.color = cleanedColor; else pieceConfig.O.color = cleanedColor;
+                    db.ref('rooms/' + activeRoomId + '/pieceConfig/' + myRole + '/color').set(cleanedColor).catch(() => {});
+                }
+            } else if (newColor) {
+                alert("⚠️ Chỉ chấp nhận mã màu HEX hợp lệ (VD: #38bdf8)!");
+            }
+        }
+    }
+
+    let lastChatSentTs = 0;
+    function sendChatMessage() {
+        const input = document.getElementById('chat-input-text');
+        const msg = input.value.trim().slice(0, MAX_CHAT_LEN);
+        input.value = '';
+        if (!msg || !activeRoomId || isAIGame || isSpectatingAdmin || !db) return;
+        if (Date.now() - lastChatSentTs < 500) return;
+        if (containsForbiddenText(msg)) return;
+        lastChatSentTs = Date.now();
+        db.ref('rooms/' + activeRoomId + '/chats').push({
+            sender: String(myName || "Player").slice(0, 20),
+            senderAuthUid: authUid || null,
+            type: 'text',
+            text: msg,
+            ts: Date.now()
+        }).catch(() => {});
+    }
+
+    function sendEmoji(emojiChar) {
+        if (!activeRoomId || isAIGame || isSpectatingAdmin || !db) return;
+        if (Date.now() - lastChatSentTs < 400 || containsForbiddenText(emojiChar)) return;
+        lastChatSentTs = Date.now();
+        db.ref('rooms/' + activeRoomId + '/chats').push({
+            sender: String(myName || "Player").slice(0, 20),
+            senderAuthUid: authUid || null,
+            type: 'text',
+            text: String(emojiChar).slice(0, 8),
+            ts: Date.now()
+        }).catch(() => {});
+    }
+
+    function sendChatImage(fileInput) {
+        const file = fileInput.files[0];
+        if (!file || !activeRoomId || isAIGame || isSpectatingAdmin || !db) return;
+        if (!file.type.startsWith('image/')) { alert("⚠️ Chỉ được phép gửi ảnh!"); fileInput.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = function () {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                let w = img.width, h = img.height, max = 300;
+                if (w > h && w > max) { h *= max / w; w = max; }
+                else if (h > max) { w *= max / h; h = max; }
+                canvas.width = w; canvas.height = h;
+                ctx.drawImage(img, 0, 0, w, h);
+                const compressedUrl = canvas.toDataURL('image/jpeg', 0.6);
+                if (!isSafeImageDataUrl(compressedUrl)) {
+                    alert("⚠️ Ảnh quá lớn hoặc định dạng không hợp lệ!");
+                    return;
+                }
+                db.ref('rooms/' + activeRoomId + '/chats').push({
+                    sender: String(myName || "Player").slice(0, 20),
+                    senderAuthUid: authUid || null,
+                    type: 'image',
+                    url: compressedUrl,
+                    ts: Date.now()
+                }).catch(() => {});
+            };
+        };
+        reader.readAsDataURL(file);
+        fileInput.value = '';
+    }
+
+    function openLightbox(imgUrl) {
+        if (!isSafeImageDataUrl(imgUrl)) return;
+        document.getElementById('lightbox-img').src = imgUrl;
+        document.getElementById('lightbox-modal').style.display = 'flex';
+    }
+
+    function openAdminAuth() {
+        document.getElementById('sidebar-drawer').classList.remove('open');
+        openAdminTabDirectly();
+    }
+
+    function toggleAdminSubPanel(type) {
+        if (!isAdminFull) { alert("⚠️ Kích hoạt phiên Admin theo Firebase UID trước!"); return; }
+        const qPanel = document.getElementById('admin-quiz-panel');
+        const mPanel = document.getElementById('admin-mine-panel');
+        const dPanel = document.getElementById('admin-data-panel');
+        const btnQ = document.getElementById('btn-toggle-quiz-panel');
+        const btnM = document.getElementById('btn-toggle-mine-panel');
+        const btnD = document.getElementById('btn-toggle-admin-data-panel');
+
+        qPanel.classList.remove('open');
+        mPanel.classList.remove('open');
+        dPanel.classList.remove('open');
+        btnQ.classList.remove('active-tab');
+        btnM.classList.remove('active-tab');
+        btnD.classList.remove('active-tab');
+
+        if (type === 'quiz') {
+            qPanel.classList.add('open');
+            btnQ.classList.add('active-tab');
+        } else if (type === 'mine') {
+            mPanel.classList.add('open');
+            btnM.classList.add('active-tab');
+            renderAdminSoloMineBoard();
+        } else if (type === 'data') {
+            dPanel.classList.add('open');
+            btnD.classList.add('active-tab');
+            refreshAdminDataPanel();
+        }
+    }
+
+    function pushAIDataToMainAdmin(payload) {
+        if (!db) return;
+        const record = {
+            adminUid: ADMIN_MAIN_UID,
+            actorName: String(myName || "Người chơi đơn").slice(0, 20),
+            actorUid: String(currentUid || myDeviceKey),
+            actorAuthUid: authUid || null,
+            roomId: String(payload.roomId || activeRoomId || ""),
+            role: String(payload.role || "O"),
+            move: payload.move || null,
+            event: String(payload.event || "ai_move"),
+            timestamp: Date.now(),
+            timeFormatted: new Date().toLocaleTimeString('vi-VN')
+        };
+        db.ref(`adminData/${ADMIN_MAIN_UID}/aiImpersonation`).push(record).catch(() => {});
+        db.ref(`adminData/${ADMIN_MAIN_UID}/latestAI`).set(record).catch(() => {});
+    }
+
+    function refreshAdminDataPanel() {
+        const sumEl = document.getElementById('admin-data-summary');
+        const logsEl = document.getElementById('admin-ai-return-logs');
+        if (!sumEl || !logsEl) return;
+
+        if (!db) {
+            sumEl.textContent = `UID chính: ${ADMIN_MAIN_UID} • Chưa kết nối Firebase`;
+            return;
+        }
+
+        Promise.all([
+            db.ref('rooms').once('value'),
+            db.ref(`adminData/${ADMIN_MAIN_UID}/aiImpersonation`).limitToLast(15).once('value')
+        ]).then(([roomsSnap, aiSnap]) => {
+            const roomsObj = roomsSnap.val() || {};
+            const roomCount = Object.keys(roomsObj).length;
+            const mineCount = Object.keys(soloAdminMines).length;
+            const qCount = customUploadedQuestions.length;
+            sumEl.textContent = `UID: ${ADMIN_MAIN_UID} • Phòng: ${roomCount} • Quiz: ${qCount} • Mìn đơn: ${mineCount}`;
+
+            const aiVal = aiSnap.val() || {};
+            const entries = Object.values(aiVal).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            logsEl.textContent = '';
+            if (!entries.length) {
+                const empty = document.createElement('div');
+                empty.style.color = 'var(--text-muted)';
+                empty.textContent = `Chưa có dữ liệu đội lốt AI trả về cho ${ADMIN_MAIN_UID}.`;
+                logsEl.appendChild(empty);
+                return;
+            }
+            entries.forEach(item => {
+                const row = document.createElement('div');
+                const posTxt = item.move ? `(${item.move.r}, ${item.move.c})` : "";
+                row.textContent = `• [${item.timeFormatted || ""}] ${item.actorName} đội lốt AI tại #${item.roomId || "-"} • ${item.event} ${posTxt}`;
+                logsEl.appendChild(row);
+            });
+        }).catch(() => {
+            sumEl.textContent = `UID: ${ADMIN_MAIN_UID} • Không tải được dữ liệu`;
+        });
+    }
+
+    function clearAdminAILogData() {
+        if (!isAdminFull) { alert("⚠️ Kích hoạt phiên Admin trước!"); return; }
+        if (!db) return;
+        db.ref(`adminData/${ADMIN_MAIN_UID}/aiImpersonation`).remove().then(() => {
+            refreshAdminDataPanel();
+        }).catch(() => {});
+    }
+
+    const SOLO_MS_SIZE = 8;
+    let soloMsGrid = [];
+    let soloMsRevealed = [];
+    let soloAdminMines = {};
+    let soloPlayerTelemetry = { screen: "lobby", playerName: "", revealedCount: 0, updatedAt: 0 };
+    let adminMineTapEnabled = true;
+
+    function syncSoloPlayerPresenceToCloud(screenName = "lobby") {
+        if (!db || isAdminFull) return;
+        const targetKey = authUid || currentUid || myDeviceKey;
+        const revCount = soloMsRevealed.length ? soloMsRevealed.flat().filter(Boolean).length : 0;
+        soloPlayerTelemetry = {
+            screen: screenName,
+            playerName: String(myName || "Người chơi đơn").slice(0, 20),
+            gameUid: currentUid || null,
+            authUid: authUid || null,
+            revealedCount: revCount,
+            updatedAt: Date.now()
+        };
+        db.ref("soloMinesweeper/playerState/" + targetKey).set(soloPlayerTelemetry).catch(() => {});
+    }
+
+    function toggleAdminMineTapMode() {
+        adminMineTapEnabled = !adminMineTapEnabled;
+        const btn = document.getElementById("btn-mine-place-mode");
+        if (btn) {
+            btn.textContent = adminMineTapEnabled ? "Chế độ: Bấm đặt mìn (BẬT)" : "Chế độ: Xem ô (TẮT)";
+            btn.style.background = adminMineTapEnabled ? "var(--ios-red)" : "rgba(255,255,255,0.16)";
+        }
+    }
+
+    function dispatchSoloMineToPlayer(r, c, placed) {
+        const key = `${r},${c}`;
+        if (placed) soloAdminMines[key] = true;
+        else delete soloAdminMines[key];
+
+        if (db) {
+            db.ref("soloMinesweeper/adminMines/" + key).set(placed ? true : null).catch(() => {});
+            db.ref("soloMinesweeper/dispatchLog").push({
+                r, c,
+                action: placed ? "place" : "remove",
+                by: String(myName || "Admin").slice(0, 20),
+                byAuthUid: authUid || null,
+                targetAdminUid: ADMIN_MAIN_UID,
+                ts: Date.now()
+            }).catch(() => {});
+        }
+        renderAdminSoloMineBoard();
+        applySoloMinesToPlayerBoard();
+    }
+
+    function clearAllSoloMinesFromAdmin() {
+        if (!isAdminFull) { alert("⚠️ Kích hoạt phiên Admin trước!"); return; }
+        soloAdminMines = {};
+        if (db) {
+            db.ref("soloMinesweeper/adminMines").remove().catch(() => {});
+            db.ref("soloMinesweeper/dispatchLog").push({
+                action: "clear_all",
+                by: String(myName || "Admin").slice(0, 20),
+                byAuthUid: authUid || null,
+                targetAdminUid: ADMIN_MAIN_UID,
+                ts: Date.now()
+            }).catch(() => {});
+        }
+        renderAdminSoloMineBoard();
+        applySoloMinesToPlayerBoard();
+    }
+
+    function renderAdminSoloMineBoard() {
+        const gridEl = document.getElementById("admin-solo-mine-board");
+        const infoEl = document.getElementById("admin-solo-target-info");
+        if (!gridEl) return;
+
+        if (infoEl) {
+            const pName = soloPlayerTelemetry.playerName || "Người chơi đơn";
+            const pScreen = soloPlayerTelemetry.screen || "sảnh";
+            infoEl.textContent = `Người chơi: ${pName} • Đang ở: ${pScreen} • Đã mở: ${soloPlayerTelemetry.revealedCount} ô`;
+        }
+
+        gridEl.textContent = "";
+        for (let r = 0; r < SOLO_MS_SIZE; r++) {
+            for (let c = 0; c < SOLO_MS_SIZE; c++) {
+                const key = `${r},${c}`;
+                const isOpen = Boolean(soloMsRevealed[r] && soloMsRevealed[r][c]);
+                const hasMine = Boolean(soloAdminMines[key]);
+                const cellBtn = document.createElement("button");
+                cellBtn.type = "button";
+                cellBtn.className = `solo-admin-mine-cell ${isOpen ? "is-open" : ""} ${hasMine ? "has-mine" : ""}`;
+                if (hasMine) cellBtn.textContent = "💣";
+                else if (isOpen && soloMsGrid[r] && soloMsGrid[r][c] > 0) cellBtn.textContent = String(soloMsGrid[r][c]);
+                else if (isOpen) cellBtn.textContent = "•";
+                else cellBtn.textContent = "";
+
+                cellBtn.onclick = () => {
+                    if (!isAdminFull) { alert("⚠️ Kích hoạt phiên Admin trước!"); return; }
+                    if (!adminMineTapEnabled) return;
+                    const nextState = !Boolean(soloAdminMines[key]);
+                    dispatchSoloMineToPlayer(r, c, nextState);
+                };
+                gridEl.appendChild(cellBtn);
+            }
+        }
+    }
+
+    function applySoloMinesToPlayerBoard() {
+        const boardEl = document.getElementById("minesweeper-board");
+        const stEl = document.getElementById("solo-mine-status");
+        const mineCount = Object.keys(soloAdminMines).length;
+        if (stEl) {
+            stEl.textContent = mineCount > 0
+                ? `💣 Admin đã gửi ${mineCount} mìn tới bàn đơn!`
+                : "Sẵn sàng • Nhận mìn từ Admin mọi lúc";
+        }
+        if (!boardEl || !boardEl.children.length) return;
+        for (let r = 0; r < SOLO_MS_SIZE; r++) {
+            for (let c = 0; c < SOLO_MS_SIZE; c++) {
+                const cell = boardEl.children[r * SOLO_MS_SIZE + c];
+                if (!cell) continue;
+                const hasMine = Boolean(soloAdminMines[`${r},${c}`]);
+                cell.classList.toggle("admin-mine-dot", hasMine && isAdminFull);
+            }
+        }
+    }
+
+    function subscribeSoloMinesAndAdminDispatch() {
+        if (!db) return;
+        db.ref("soloMinesweeper/adminMines").on("value", snap => {
+            soloAdminMines = snap.val() || {};
+            renderAdminSoloMineBoard();
+            applySoloMinesToPlayerBoard();
+        }, () => {});
+
+        db.ref("soloMinesweeper/playerState").on("value", snap => {
+            const allStates = snap.val() || {};
+            const entries = Object.values(allStates).filter(Boolean);
+            if (entries.length) {
+                entries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                soloPlayerTelemetry = entries[0];
+                renderAdminSoloMineBoard();
+            }
+        }, () => {});
+
+        db.ref("soloMinesweeper/dispatchLog").limitToLast(1).on("child_added", snap => {
+            const cmd = snap.val();
+            if (!cmd || !cmd.ts || (Date.now() - cmd.ts > 15000)) return;
+            if (!isAdminFull) {
+                const stEl = document.getElementById("solo-mine-status");
+                if (stEl) {
+                    stEl.textContent = cmd.action === "clear_all"
+                        ? "⚡ Admin vừa xóa toàn bộ mìn trên bàn đơn"
+                        : `💣 Admin vừa ${cmd.action === "place" ? "đặt" : "gỡ"} mìn tại (${cmd.r}, ${cmd.c})`;
+                }
+            }
+        }, () => {});
+    }
+
+    function openImpersonateAIPicker() {
+        if (!isAdminFull) { alert("⚠️ Kích hoạt phiên Admin trước!"); return; }
+        const panel = document.getElementById('admin-ai-panel');
+        const isOpen = panel.classList.contains('open');
+        panel.classList.toggle('open', !isOpen);
+        if (isOpen) return;
+
+        if (!db) {
+            panel.textContent = 'Chưa kết nối Firebase DB nên chưa có phòng.';
+            return;
+        }
+
+        panel.textContent = 'Đang kiểm tra các phòng hiện có...';
+        db.ref('rooms').once('value').then(snap => {
+            const rooms = snap.val() || {};
+            const roomIds = Object.keys(rooms).filter(id => rooms[id]);
+            panel.textContent = '';
+
+            if (!roomIds.length) {
+                const msg = document.createElement('div');
+                msg.style.cssText = 'font-size:11px; color:var(--ios-amber); font-weight:700;';
+                msg.textContent = '⚠️ Chưa có phòng nào tồn tại. Đội lốt AI chỉ khả dụng khi có phòng!';
+                panel.appendChild(msg);
+                return;
+            }
+
+            roomIds.forEach(roomId => {
+                const rData = rooms[roomId] || {};
+                const pX = rData.players?.X || "Trống";
+                const pO = rData.players?.O || "Trống";
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'auth-btn';
+                btn.style.cssText = 'background: var(--ios-purple); padding: 8px; font-size: 12px;';
+                btn.textContent = `Đội lốt AI tại Phòng #${roomId} (X: ${pX} | O: ${pO})`;
+                btn.onclick = () => takeOverExistingRoomAsAI(roomId);
+                panel.appendChild(btn);
+            });
+        }).catch(() => {
+            panel.textContent = 'Lỗi đọc danh sách phòng.';
+        });
+    }
+
+    function takeOverExistingRoomAsAI(roomId) {
+        if (!db || !roomId) return;
+        db.ref('rooms/' + roomId).transaction(room => {
+            if (!room) return;
+            room.hasAI = true;
+            if (!room.players) room.players = { X: "Người chơi", O: "" };
+            room.players.O = `${String(myName || "Người chơi đơn").slice(0, 14)} [AI]`;
+            if (room.status === 'waiting') room.status = 'playing';
+            return room;
+        }, (err, committed, snap) => {
+            if (err || !committed || !snap.exists()) {
+                alert("❌ Không thể đội lốt AI tại phòng #" + roomId);
+                return;
+            }
+            stopRoomTelemetryTimer();
+            if (activeRoomId && !isAIGame) detachActiveRoomListeners(activeRoomId);
+
+            activeRoomId = String(roomId);
+            impersonatedRoomId = String(roomId);
+            isAIGame = false;
+            isSpectatingAdmin = false;
+            isImpersonatingAI = true;
+            myRole = 'O';
+            gameActive = true;
+            currentOpponentName = snap.val()?.players?.X || "Người chơi (X)";
+            matchStartedAtTs = Date.now();
+
+            pushAIDataToMainAdmin({
+                roomId: activeRoomId,
+                role: 'O',
+                event: 'start_impersonate_ai'
+            });
+
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('lobby-screen').style.display = 'none';
+            document.getElementById('post-login-screen').style.display = 'none';
+            document.getElementById('current-room-code-txt').textContent = activeRoomId;
+            statusText.textContent = `🤖 Đang đội lốt AI tại Phòng #${activeRoomId} • Dữ liệu trả về ${ADMIN_MAIN_UID}`;
+            initCaroBoard();
+            listenToOnlineRoom();
+        });
+    }
+
+    function renderAdminRoomsSnapshot(rooms) {
+        const listEl = document.getElementById('admin-rooms-list');
+        if (!listEl) return;
+        listEl.textContent = '';
+
+        if (!rooms || Object.keys(rooms).length === 0) {
+            const empty = document.createElement('div');
+            empty.style.color = 'var(--text-muted)';
+            empty.textContent = 'Không có phòng nào.';
+            listEl.appendChild(empty);
+            const hintEl = document.getElementById('admin-ai-rooms-hint');
+            if (hintEl) hintEl.textContent = "Chưa có phòng • Đội lốt AI cần có phòng trước";
+            return;
+        }
+
+        const now = Date.now();
+        const roomKeys = Object.keys(rooms).filter(id => {
+            const r = rooms[id];
+            if (!r) return false;
+            if (r.createdAt && (now - r.createdAt > ROOM_STALE_MS) && db) {
+                db.ref('rooms/' + id).remove().catch(() => {});
+                return false;
+            }
+            return true;
+        });
+
+        const hintEl = document.getElementById('admin-ai-rooms-hint');
+        if (hintEl) {
+            hintEl.textContent = `Có ${roomKeys.length} phòng (${roomKeys.join(", ")}) • Nhấn để đội lốt AI`;
+        }
+
+        roomKeys.forEach(roomId => {
+            const rData = rooms[roomId] || {};
+            const pX = rData.players?.X || "Trống";
+            const pO = rData.players?.O || "Trống";
+            const st = rData.status || "waiting";
+
+            const item = document.createElement('div');
+            item.className = 'admin-room-item';
+
+            const topRow = document.createElement('div');
+            topRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+            const idSpan = document.createElement('span');
+            idSpan.style.cssText = 'font-weight:800; color:var(--primary);';
+            idSpan.textContent = `Phòng #${roomId}`;
+            const stSpan = document.createElement('span');
+            stSpan.style.cssText = 'font-size:10px; color:#4ade80; font-family:var(--font-mono);';
+            stSpan.textContent = st;
+            topRow.appendChild(idSpan);
+            topRow.appendChild(stSpan);
+
+            const playersRow = document.createElement('div');
+            playersRow.textContent = `X: ${pX} vs O: ${pO}`;
+
+            const actionsRow = document.createElement('div');
+            actionsRow.className = 'admin-room-actions';
+
+            const btnView = document.createElement('button');
+            btnView.type = 'button';
+            btnView.className = 'btn-sm';
+            btnView.style.cssText = 'background:var(--primary); color:#fff; border:none;';
+            btnView.textContent = 'Xem';
+            btnView.onclick = () => adminSpectateRoom(String(roomId));
+
+            const btnDel = document.createElement('button');
+            btnDel.type = 'button';
+            btnDel.className = 'btn-sm';
+            btnDel.style.cssText = 'background:var(--ios-red); color:#fff; border:none;';
+            btnDel.textContent = 'Xóa';
+            btnDel.onclick = () => adminDeleteRoom(String(roomId));
+
+            actionsRow.appendChild(btnView);
+            actionsRow.appendChild(btnDel);
+
+            item.appendChild(topRow);
+            item.appendChild(playersRow);
+            item.appendChild(actionsRow);
+            listEl.appendChild(item);
+        });
+    }
+
+    function attachAdminRoomsRealtimeListener() {
+        if (!db) return;
+        db.ref('rooms').off();
+        db.ref('rooms').on('value', snap => {
+            renderAdminRoomsSnapshot(snap.val());
+        }, () => {});
+    }
+
+    function refreshAdminRoomsList() {
+        const listEl = document.getElementById('admin-rooms-list');
+        if (!listEl) return;
+        if (!db) {
+            listEl.textContent = 'Chưa kết nối Firebase DB.';
+            return;
+        }
+        db.ref('rooms').once('value').then(snap => {
+            renderAdminRoomsSnapshot(snap.val());
+        }).catch(err => {
+            listEl.textContent = `Lỗi tải phòng: ${err.message}`;
+        });
+    }
+
+    async function adminDeleteRoom(roomId) {
+        const cleanId = String(roomId || "").trim();
+        if (!cleanId) return;
+        if (!isAdminFull) { alert("⚠️ Kích hoạt phiên Admin trước khi xóa phòng!"); return; }
+        if (!db) { alert("⚠️ Không có kết nối Firebase để xóa phòng."); return; }
+        if (!confirm(`Xác nhận xóa vĩnh viễn phòng #${cleanId}?`)) return;
+
+        try {
+            await db.ref('rooms/' + cleanId).remove();
+            if (activeRoomId === cleanId) returnToLobby();
+            refreshAdminDataPanel();
+        } catch (err) {
+            alert("❌ Không xóa được phòng #" + cleanId + ": " + (err && err.message ? err.message : "Lỗi quyền/mạng"));
+        }
+    }
+
+    function adminSpectateRoom(roomId) {
+        const cleanId = String(roomId || "").trim();
+        if (!cleanId) return;
+        if (!isAdminFull) { alert("⚠️ Kích hoạt phiên Admin trước khi xem phòng!"); return; }
+        if (!db) { alert("⚠️ Không có kết nối Firebase để xem phòng."); return; }
+
+        stopRoomTelemetryTimer();
+        if (activeRoomId && !isAIGame) detachActiveRoomListeners(activeRoomId);
+
+        isAIGame = false;
+        isSpectatingAdmin = true;
+        isImpersonatingAI = false;
+        impersonatedRoomId = null;
+        myRole = null;
+        gameActive = false;
+        activeRoomId = cleanId;
+        board = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
+        lastMovePos = null;
+
+        closeAdminModal();
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('post-login-screen').style.display = 'none';
+        document.getElementById('lobby-screen').style.display = 'none';
+        document.getElementById('result-modal').style.display = 'none';
+        document.getElementById('sidebar-drawer').classList.remove('open');
+
+        document.getElementById('current-room-code-txt').textContent = activeRoomId;
+        statusText.textContent = `[ĐANG XEM THỰC TẾ] Phòng #${activeRoomId} — Đang đồng bộ bàn cờ...`;
+
+        initCaroBoard();
+        listenToOnlineRoom();
+    }
+
+    let customUploadedQuestions = [];
+    const seenSoloQuestionKeys = new Set();
+
+    function shuffleQuestionOptions(qObj) {
+        if (!qObj || !Array.isArray(qObj.o) || qObj.o.length === 0) return qObj;
+        const indexed = qObj.o.map((text, idx) => ({ text, isCorrect: idx === qObj.a }));
+        for (let i = indexed.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
+        }
+        return {
+            ...qObj,
+            o: indexed.map(item => item.text),
+            a: Math.max(0, indexed.findIndex(item => item.isCorrect))
+        };
+    }
+
+    function uploadNewQuestionToFirebase() {
+        if (!isAdminFull) { alert("❌ Chỉ phiên Admin đã cấp quyền mới có quyền lưu quiz!"); return; }
+        const cat = document.getElementById('admin-q-category').value || "All";
+        const qText = document.getElementById('new-q-text').value.trim();
+        const opt0 = document.getElementById('new-q-opt0').value.trim();
+        const opt1 = document.getElementById('new-q-opt1').value.trim();
+        const opt2 = document.getElementById('new-q-opt2').value.trim();
+        const opt3 = document.getElementById('new-q-opt3').value.trim();
+        const correct = parseInt(document.getElementById('new-q-correct').value, 10);
+        if (!qText || !opt0 || !opt1 || !opt2 || !opt3) { alert("Nhập đầy đủ câu hỏi và 4 đáp án!"); return; }
+        const newQ = { cat, q: `[${cat}] ${qText}`, o: [opt0, opt1, opt2, opt3], a: correct, fromAdmin: true, adminUid: ADMIN_MAIN_UID, creatorAuthUid: authUid || null };
+        if (db) {
+            db.ref('questions').push(newQ).catch(() => {});
+        } else {
+            customUploadedQuestions.push(newQ);
+            refreshDailyQuestionPool();
+        }
+        alert("✅ Đã lưu câu hỏi của Admin lên hệ thống Quiz đơn!");
+        ['new-q-text', 'new-q-opt0', 'new-q-opt1', 'new-q-opt2', 'new-q-opt3'].forEach(id => { document.getElementById(id).value = ''; });
+    }
+
+    function subscribeCloudAdminQuestions() {
+        if (!db) return;
+        db.ref('questions').on('value', snap => {
+            const val = snap.val();
+            if (val) {
+                customUploadedQuestions = Object.keys(val)
+                    .map(k => ({ ...val[k], _id: k, fromAdmin: true }))
+                    .filter(x => x && x.q && Array.isArray(x.o) && x.o.length === 4);
+            } else {
+                customUploadedQuestions = [];
+            }
+            const totalEl = document.getElementById('admin-total-q');
+            if (totalEl) totalEl.textContent = customUploadedQuestions.length;
+            refreshDailyQuestionPool();
+        }, () => {});
+    }
+
+    const mixedDifficultyTemplates = [
+        {
+            tier: "easy",
+            build: (n) => {
+                const a = (n * 5) % 30 + 5, b = (n * 2) % 15 + 3;
+                return { q: `[All • Dễ] ${a} + ${b} bằng bao nhiêu?`, o: [String(a + b), String(a + b + 1), String(a + b - 2), String(a + b + 4)], a: 0 };
+            }
+        },
+        {
+            tier: "medium",
+            build: (n) => {
+                const a = (n * 7) % 24 + 12, b = (n % 9) + 4;
+                return { q: `[All • Vừa] ${a} × ${b} có kết quả là?`, o: [String(a * b), String(a * b + b), String(a * b - a), String(a * b + 10)], a: 0 };
+            }
+        },
+        {
+            tier: "hard",
+            build: (n) => {
+                const x = (n % 12) + 5, c = (n % 7) + 2, total = 3 * x + c;
+                return { q: `[All • Khó] Biết 3x + ${c} = ${total}. Giá trị của x là?`, o: [String(x), String(x + 2), String(Math.max(1, x - 2)), String(x + 5)], a: 0 };
+            }
+        },
+        {
+            tier: "medium",
+            build: (n) => {
+                const bank = [
+                    ["Từ nào viết đúng chính tả?", ["khúc khích", "khúc khít", "khúc khỉnh", "khúc khư"], 0],
+                    ["Câu nào là câu ghép?", ["Mưa rơi và gió thổi mạnh.", "Trời xanh ngắt.", "Hoa nở rộ.", "Chim hót líu lo."], 0]
+                ];
+                const pick = bank[n % bank.length];
+                return { q: `[All • Vừa] ${pick[0]}`, o: pick[1], a: pick[2] };
+            }
+        },
+        {
+            tier: "hard",
+            build: (n) => {
+                const bank = [
+                    ["Choose the correct past participle of 'begin':", ["begun", "began", "beginned", "begoing"], 0],
+                    ["Which sentence uses the passive voice correctly?", ["The letter was written by Nam.", "Nam written the letter.", "The letter writing by Nam.", "Nam is write letter."], 0]
+                ];
+                const pick = bank[n % bank.length];
+                return { q: `[All • Khó] ${pick[0]}`, o: pick[1], a: pick[2] };
+            }
+        },
+        {
+            tier: "hard",
+            build: (n) => {
+                const bank = [
+                    ["Đơn vị đo cường độ dòng điện trong hệ SI là gì?", ["Ampe (A)", "Vôn (V)", "Ôm (Ω)", "Oát (W)"], 0],
+                    ["Hành tinh nào gần Mặt Trời nhất trong Hệ Mặt Trời?", ["Sao Thủy", "Sao Kim", "Sao Hỏa", "Sao Mộc"], 0]
+                ];
+                const pick = bank[n % bank.length];
+                return { q: `[All • Khó] ${pick[0]}`, o: pick[1], a: pick[2] };
+            }
+        },
+        {
+            tier: "easy",
+            build: (n) => {
+                const bank = [
+                    ["Khóa Son (G clef) thường dùng để ghi nhạc cho tay nào trên piano?", ["Tay phải", "Tay trái", "Cả hai tay luôn luôn", "Bàn đạp"], 0],
+                    ["Nhịp 4/4 có bao nhiêu phách trong mỗi ô nhịp?", ["4 phách", "2 phách", "3 phách", "6 phách"], 0]
+                ];
+                const pick = bank[n % bank.length];
+                return { q: `[Âm Nhạc • Dễ] ${pick[0]}`, o: pick[1], a: pick[2] };
+            }
+        },
+        {
+            tier: "hard",
+            build: (n) => {
+                const bank = [
+                    ["Quãng cách giữa nốt Đô (C) và nốt Sol (G) là quãng mấy?", ["Quãng 5 đúng", "Quãng 3 trưởng", "Quãng 4 đúng", "Quãng 6 trưởng"], 0],
+                    ["Ký hiệu 'Crescendo' trong âm nhạc có nghĩa là gì?", ["To dần lên", "Nhỏ dần đi", "Chậm hẳn lại", "Ngắt tiếng"], 0]
+                ];
+                const pick = bank[n % bank.length];
+                return { q: `[Âm Nhạc • Khó] ${pick[0]}`, o: pick[1], a: pick[2] };
+            }
+        }
+    ];
+
+    function generateMixedQuestionByNumber(num1Based) {
+        const qNum = (((num1Based - 1) % TOTAL_QUESTION_BANK_SIZE + TOTAL_QUESTION_BANK_SIZE) % TOTAL_QUESTION_BANK_SIZE) + 1;
+        const raw = mixedDifficultyTemplates[qNum % mixedDifficultyTemplates.length].build(qNum);
+        return shuffleQuestionOptions(raw);
+    }
+
+    function getDayIndexSinceEpoch() {
+        const now = new Date();
+        return Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+    }
+
+    let todayQuestionPool = [];
+    function refreshDailyQuestionPool() {
+        const startNum = ((getDayIndexSinceEpoch() * DAILY_QUESTION_BATCH_SIZE) % TOTAL_QUESTION_BANK_SIZE) + 1;
+        const pool = [];
+        for (let i = 0; i < DAILY_QUESTION_BATCH_SIZE; i++) {
+            pool.push(generateMixedQuestionByNumber(((startNum - 1 + i) % TOTAL_QUESTION_BANK_SIZE) + 1));
+        }
+        const adminList = customUploadedQuestions.map(cq => ({ ...cq, fromAdmin: true }));
+        todayQuestionPool = [...adminList, ...pool];
+
+        const infoEl = document.getElementById("daily-question-pool-info");
+        if (infoEl) infoEl.textContent = `Admin: ${adminList.length} • Tổng: ${todayQuestionPool.length} câu`;
+    }
+
+    function buildSoloQuizBatch(count = 10) {
+        const adminItems = customUploadedQuestions.map(cq => ({ ...cq, fromAdmin: true }));
+        const baseItems = todayQuestionPool.filter(q => !q.fromAdmin);
+
+        let freshBase = baseItems.filter(q => !seenSoloQuestionKeys.has(q.q));
+        if (freshBase.length < count) {
+            seenSoloQuestionKeys.clear();
+            freshBase = [...baseItems];
+        }
+
+        for (let i = freshBase.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [freshBase[i], freshBase[j]] = [freshBase[j], freshBase[i]];
+        }
+
+        const chosen = [];
+        for (const aq of adminItems.slice(-4)) {
+            if (chosen.length < count) chosen.push(aq);
+        }
+        for (const bq of freshBase) {
+            if (chosen.length >= count) break;
+            chosen.push(shuffleQuestionOptions(bq));
+        }
+
+        chosen.forEach(item => seenSoloQuestionKeys.add(item.q));
+        return chosen;
+    }
+
+    let quizList = [], currentQIdx = 0, quizScore = 0, quizTimer = null, quizTimeLeft = QUIZ_THINK_SECONDS;
+    let selectedOptionIdx = null, answerRevealed = false, questionScored = false;
+
+    function openQuizModal() {
+        refreshDailyQuestionPool();
+        document.getElementById('quiz-modal').style.display = 'flex';
+        stopQuizCountdown();
+        quizList = buildSoloQuizBatch(10);
+        currentQIdx = 0;
+        quizScore = 0;
+        document.getElementById('quiz-score-live').textContent = `Điểm: 0`;
+        renderSoloQuizQuestion();
+    }
+
+    function closeQuizModal() {
+        stopQuizCountdown();
+        document.getElementById('quiz-modal').style.display = 'none';
+    }
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden && quizTimer) {
+            stopQuizCountdown();
+            goToNextSoloQuizQuestion();
+        }
+    });
+
+    function renderSoloQuizQuestion() {
+        if (currentQIdx >= quizList.length) {
+            const earnedGem = Math.floor(quizScore / 20);
+            if (currentUid && !isAdminFull && db) {
+                statsData.quizScore = Math.max(statsData.quizScore, quizScore);
+                db.ref('users/' + currentUid + '/stats/quizScore').set(statsData.quizScore).catch(() => {});
+                if (authUid) db.ref('usersByAuthUid/' + authUid + '/stats/quizScore').set(statsData.quizScore).catch(() => {});
+                if (earnedGem > 0) rewardPlayer(earnedGem, false);
+            } else if (earnedGem > 0) {
+                myGem += earnedGem;
+            }
+            updateUserUI();
+            alert(`🎉 Hoàn thành Quiz chơi đơn! Điểm: ${quizScore} (+${earnedGem} 💎)`);
+            closeQuizModal();
+            return;
+        }
+
+        selectedOptionIdx = null;
+        answerRevealed = false;
+        questionScored = false;
+
+        const viewBtn = document.getElementById('quiz-view-result-btn');
+        const reviewBox = document.getElementById('quiz-review-box');
+        viewBtn.style.display = 'none';
+        reviewBox.classList.remove('open');
+        reviewBox.textContent = '';
+
+        const qObj = quizList[currentQIdx];
+        const tagAdmin = qObj.fromAdmin ? " [CÂU HỎI ADMIN]" : "";
+        document.getElementById('quiz-progress').textContent = `Câu ${currentQIdx + 1}/${quizList.length}${tagAdmin}`;
+        document.getElementById('question-text').textContent = qObj.q;
+
+        const container = document.getElementById('options-container');
+        container.textContent = '';
+        qObj.o.forEach((opt, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = `${String.fromCharCode(65 + i)}. ${opt}`;
+            btn.onclick = () => onSelectOptionBeforeResult(i);
+            container.appendChild(btn);
+        });
+
+        quizTimeLeft = QUIZ_THINK_SECONDS;
+        document.getElementById('quiz-timer-txt').textContent = `${quizTimeLeft}s`;
+        document.getElementById('timer-fill').style.width = '100%';
+        stopQuizCountdown();
+        quizTimer = setInterval(() => {
+            quizTimeLeft--;
+            if (quizTimeLeft < 0) quizTimeLeft = 0;
+            document.getElementById('quiz-timer-txt').textContent = `${quizTimeLeft}s`;
+            document.getElementById('timer-fill').style.width = `${(quizTimeLeft / QUIZ_THINK_SECONDS) * 100}%`;
+            if (quizTimeLeft <= 0) {
+                stopQuizCountdown();
+                if (!answerRevealed) {
+                    revealAnswerResultNow();
+                } else {
+                    goToNextSoloQuizQuestion();
+                }
+            }
+        }, 1000);
+    }
+
+    function onSelectOptionBeforeResult(idx) {
+        if (answerRevealed) return;
+        selectedOptionIdx = idx;
+        playSound('click');
+
+        const container = document.getElementById('options-container');
+        Array.from(container.children).forEach((btn, i) => {
+            btn.classList.toggle('selected', i === idx);
+        });
+
+        document.getElementById('quiz-view-result-btn').style.display = 'block';
+    }
+
+    function revealAnswerResultNow() {
+        if (answerRevealed) return;
+        answerRevealed = true;
+        document.getElementById('quiz-view-result-btn').style.display = 'none';
+
+        const qObj = quizList[currentQIdx];
+        const container = document.getElementById('options-container');
+        const reviewBox = document.getElementById('quiz-review-box');
+        const correctLetter = String.fromCharCode(65 + qObj.a);
+        const correctText = qObj.o[qObj.a];
+
+        Array.from(container.children).forEach((btn, i) => {
+            btn.classList.remove('selected');
+            if (i === qObj.a) btn.classList.add('correct');
+            else if (i === selectedOptionIdx) btn.classList.add('wrong');
+        });
+
+        reviewBox.textContent = '';
+        const topLine = document.createElement('div');
+        const ansLine = document.createElement('div');
+        ansLine.textContent = `Đáp án đúng: ${correctLetter}. ${correctText}`;
+
+        if (selectedOptionIdx === null) {
+            topLine.style.cssText = 'color:#ff9f0a; font-weight:700;';
+            topLine.textContent = '⏱ Chưa chọn đáp án nào!';
+        } else if (selectedOptionIdx === qObj.a) {
+            if (!questionScored) {
+                questionScored = true;
+                quizScore += 10;
+                document.getElementById('quiz-score-live').textContent = `Điểm: ${quizScore}`;
+            }
+            playSound('win');
+            topLine.style.cssText = 'color:#4ade80; font-weight:700;';
+            topLine.textContent = '✅ Chính xác (+10 điểm)!';
+        } else {
+            const pickedLetter = String.fromCharCode(65 + selectedOptionIdx);
+            topLine.style.cssText = 'color:#ff453a; font-weight:700;';
+            topLine.textContent = `❌ Bạn chọn ${pickedLetter} — Chưa đúng!`;
+        }
+
+        reviewBox.appendChild(topLine);
+        reviewBox.appendChild(ansLine);
+        reviewBox.classList.add('open');
+    }
+
+    function goToNextSoloQuizQuestion() {
+        stopQuizCountdown();
+        currentQIdx++;
+        renderSoloQuizQuestion();
+    }
+
+    function stopQuizCountdown() {
+        if (quizTimer) { clearInterval(quizTimer); quizTimer = null; }
+    }
+
+    function openMinesweeperModal() {
+        document.getElementById('minesweeper-modal').style.display = 'flex';
+        initMinesweeper();
+        syncSoloPlayerPresenceToCloud("minesweeper");
+    }
+
+    function initMinesweeper() {
+        const boardEl = document.getElementById('minesweeper-board');
+        boardEl.textContent = '';
+        const size = SOLO_MS_SIZE, mines = 10;
+        soloMsGrid = Array(size).fill(0).map(() => Array(size).fill(0));
+        soloMsRevealed = Array(size).fill(0).map(() => Array(size).fill(false));
+
+        let planted = 0;
+        while (planted < mines) {
+            const r = Math.floor(Math.random() * size), c = Math.floor(Math.random() * size);
+            if (soloMsGrid[r][c] !== 'M') { soloMsGrid[r][c] = 'M'; planted++; }
+        }
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (soloMsGrid[r][c] === 'M') continue;
+                let cnt = 0;
+                for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+                    const nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < size && nc >= 0 && nc < size && soloMsGrid[nr][nc] === 'M') cnt++;
+                }
+                soloMsGrid[r][c] = cnt;
+            }
+        }
+
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'minesweeper-cell';
+                cell.onclick = () => {
+                    if (soloMsRevealed[r][c]) return;
+                    soloMsRevealed[r][c] = true;
+                    cell.classList.add('revealed');
+
+                    if (soloAdminMines[`${r},${c}`]) {
+                        cell.style.background = '#ff9f0a';
+                        cell.textContent = '💣';
+                        alert(`💣 Ô (${r}, ${c}) có mìn do Admin đặt!`);
+                        syncSoloPlayerPresenceToCloud("minesweeper");
+                        renderAdminSoloMineBoard();
+                        return;
+                    }
+
+                    if (soloMsGrid[r][c] === 'M') {
+                        cell.style.background = '#ff453a'; cell.textContent = '💣';
+                        alert("💥 Dẫm phải mìn!"); initMinesweeper();
+                    } else if (soloMsGrid[r][c] > 0) {
+                        cell.textContent = String(soloMsGrid[r][c]);
+                        cell.style.color = '#64d2ff';
+                    }
+                    syncSoloPlayerPresenceToCloud("minesweeper");
+                    renderAdminSoloMineBoard();
+                };
+                boardEl.appendChild(cell);
+            }
+        }
+        applySoloMinesToPlayerBoard();
+        renderAdminSoloMineBoard();
+        syncSoloPlayerPresenceToCloud("minesweeper");
+    }
+
+    const ROWS = 20, COLS = 20;
+    let board = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
+    let gameActive = true, scale = 1, pointX = 0, pointY = 0;
+    const activePointers = new Map();
+    let initialDist = 0, initialScale = 1, isDragging = false, startX = 0, startY = 0, pointerDownTime = 0, hasDragged = false, lastMovePos = null;
+
+    const viewport = document.getElementById('viewport');
+    const boardEl = document.getElementById('board');
+    const statusText = document.getElementById('status-text');
+
+    function refreshBoardDisplay() {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = boardEl.children[r * COLS + c];
+                if (!cell) continue;
+                cell.classList.remove('last-move', 'mine-armed');
+                if (lastMovePos && lastMovePos.r === r && lastMovePos.c === c) cell.classList.add('last-move');
+                if (isAdminFull && roomMinesMap[`${r},${c}`]) cell.classList.add('mine-armed');
+                if (board[r][c] !== '') {
+                    const p = board[r][c];
+                    cell.textContent = pieceConfig[p]?.icon || p;
+                    cell.style.color = pieceConfig[p]?.color || '#fff';
+                } else {
+                    cell.textContent = '';
+                }
+            }
+        }
+    }
+
+    function initCaroBoard() {
+        boardEl.style.gridTemplateColumns = `repeat(${COLS}, 44px)`;
+        boardEl.style.gridTemplateRows = `repeat(${ROWS}, 44px)`;
+        boardEl.textContent = '';
+        lastMovePos = null;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                boardEl.appendChild(cell);
+            }
+        }
+        applyBoardTheme(currentBoardThemeId);
+        resetZoom();
+    }
+
+    function updateTransform() { boardEl.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`; }
+    function resetZoom() {
+        scale = 1;
+        pointX = (viewport.clientWidth - COLS * 44) / 2;
+        pointY = (viewport.clientHeight - ROWS * 44) / 2;
+        updateTransform();
+    }
+
+    viewport.addEventListener('pointerdown', (e) => {
+        activePointers.set(e.pointerId, e);
+        if (activePointers.size === 1) {
+            isDragging = true; hasDragged = false; startX = e.clientX; startY = e.clientY; pointerDownTime = Date.now();
+        } else if (activePointers.size === 2) {
+            isDragging = false;
+            const pts = Array.from(activePointers.values());
+            initialDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+            initialScale = scale;
+        }
+        viewport.setPointerCapture(e.pointerId);
+    });
+
+    viewport.addEventListener('pointermove', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        activePointers.set(e.pointerId, e);
+        if (activePointers.size === 2) {
+            const pts = Array.from(activePointers.values());
+            const currentDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+            if (initialDist > 0) {
+                scale = Math.min(Math.max(initialScale * (currentDist / initialDist), 0.4), 2.5);
+                updateTransform();
+            }
+        } else if (isDragging && activePointers.size === 1) {
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            if (Math.hypot(dx, dy) > 4) hasDragged = true;
+            pointX += dx; pointY += dy; startX = e.clientX; startY = e.clientY;
+            updateTransform();
+        }
+    });
+
+    viewport.addEventListener('pointerup', (e) => {
+        activePointers.delete(e.pointerId);
+        if (activePointers.size < 2) initialDist = 0;
+        if (isDragging && activePointers.size === 0) {
+            isDragging = false;
+            if (!hasDragged && (Date.now() - pointerDownTime < 350)) {
+                const rect = boardEl.getBoundingClientRect();
+                const c = Math.floor((e.clientX - rect.left) / (44 * scale));
+                const r = Math.floor((e.clientY - rect.top) / (44 * scale));
+                if (r >= 0 && r < ROWS && c >= 0 && c < COLS) handleCellClick(r, c);
+            }
+        }
+        try { viewport.releasePointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    function startPlayWithAIMode() {
+        stopRoomTelemetryTimer();
+        if (activeRoomId && !isAIGame) detachActiveRoomListeners(activeRoomId);
+        activeRoomId = null;
+        impersonatedRoomId = null;
+        isAIGame = true;
+        isSpectatingAdmin = false;
+        isImpersonatingAI = false;
+        roomMinesMap = {};
+        myRole = 'X';
+        gameActive = true;
+        isAITurn = false;
+        currentOpponentName = "AI";
+        matchStartedAtTs = Date.now();
+        board = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
+        ['post-login-screen', 'lobby-screen', 'result-modal'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+        document.getElementById('sidebar-drawer').classList.remove('open');
+        document.getElementById('current-room-code-txt').textContent = "AI-SOLO";
+
+        document.getElementById('name-x').textContent = `${myName || "Người chơi"} (X)`;
+        applyDeviceBadge(document.getElementById('device-badge-x'), myDeviceType);
+        document.getElementById('country-x').textContent = countryMap[myCountry] || "";
+        document.getElementById('avatar-x').className = `avatar ${equippedFrame}`;
+        document.getElementById('img-avatar-x').src = myAvatar;
+        document.getElementById('img-avatar-x').style.display = 'block';
+        document.getElementById('txt-avatar-x').style.display = 'none';
+
+        document.getElementById('name-o').textContent = `AI (O)`;
+        applyDeviceBadge(document.getElementById('device-badge-o'), "PC");
+        document.getElementById('country-o').textContent = "";
+        document.getElementById('avatar-o').className = `avatar frame-crimson`;
+        document.getElementById('img-avatar-o').style.display = 'none';
+        document.getElementById('txt-avatar-o').style.display = 'flex';
+        document.getElementById('txt-avatar-o').textContent = 'AI';
+
+        statusText.textContent = "🤖 Đánh với AI: Lượt của bạn!";
+        initCaroBoard();
+        syncSoloPlayerPresenceToCloud("caro-ai");
+    }
+
+    function createOnlineRoom() {
+        if (isRoomActionBusy) return;
+        enforceDailyEnergyReset(currentUid, myEnergy, getTodayDateKey());
+        if (myEnergy < 2) { alert("❌ Cần ít nhất 2 ⚡."); return; }
+        if (!db) { alert("⚠️ Không kết nối được Firebase!"); return; }
+
+        isRoomActionBusy = true;
+        if (activeRoomId && !isAIGame) detachActiveRoomListeners(activeRoomId);
+
+        const consumeEnergyPromise = (currentUid && !isAdminFull)
+            ? db.ref('users/' + currentUid + '/currency').transaction(cur => {
+                const c = cur || { gem: myGem, energy: myEnergy, lastEnergyResetDate: getTodayDateKey() };
+                const baseEnergy = (c.lastEnergyResetDate !== getTodayDateKey()) ? DAILY_MAX_ENERGY : (c.energy ?? 0);
+                if (baseEnergy < 2) return;
+                c.energy = baseEnergy - 2;
+                c.lastEnergyResetDate = getTodayDateKey();
+                return c;
+            })
+            : Promise.resolve({ committed: true });
+
+        consumeEnergyPromise.then(txRes => {
+            if (!txRes.committed) {
+                isRoomActionBusy = false;
+                alert("❌ Không đủ 2 ⚡ để tạo phòng!");
+                return;
+            }
+            myEnergy = Math.max(0, myEnergy - 2);
+            statsData.onlineMatches += 1;
+            if (currentUid && !isAdminFull) {
+                db.ref('users/' + currentUid + '/stats/onlineMatches').set(statsData.onlineMatches).catch(() => {});
+                if (authUid) {
+                    db.ref('usersByAuthUid/' + authUid + '/currency/energy').set(myEnergy).catch(() => {});
+                    db.ref('usersByAuthUid/' + authUid + '/stats/onlineMatches').set(statsData.onlineMatches).catch(() => {});
+                }
+            }
+            updateUserUI();
+
+            isAIGame = false; isSpectatingAdmin = false; isImpersonatingAI = false; impersonatedRoomId = null; roomMinesMap = {};
+            myRole = 'X'; gameActive = true; currentOpponentName = "Đối thủ Online"; matchStartedAtTs = Date.now();
+            activeRoomId = generateSecureRoomCode();
+
+            const roomRef = db.ref('rooms/' + activeRoomId);
+            roomRef.set({
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                turn: 'X',
+                status: 'waiting',
+                hasAI: false,
+                playerUids: { X: currentUid || myDeviceKey, O: '' },
+                playerAuthUids: { X: authUid || '', O: '' },
+                players: { X: myName, O: '' },
+                countries: { X: myCountry, O: '' },
+                devices: { X: myDeviceType, O: '' },
+                avatars: { X: myAvatar, O: '' },
+                frames: { X: equippedFrame, O: 'frame-default' },
+                pieceConfig: { X: pieceConfig.X, O: pieceConfig.O },
+                board: Array(ROWS * COLS).fill('').join(',')
+            }).then(() => {
+                isRoomActionBusy = false;
+                roomRef.child('presence/X').onDisconnect().set(false);
+                roomRef.child('presence/X').set(true);
+
+                ['post-login-screen', 'lobby-screen'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+                document.getElementById('current-room-code-txt').textContent = activeRoomId;
+                updateOnlinePlayerDisplay('X', myName, myAvatar, equippedFrame, myCountry, myDeviceType);
+                statusText.textContent = `Phòng ${activeRoomId} (-2⚡) - Chờ người chơi 2...`;
+                initCaroBoard();
+                listenToOnlineRoom();
+            }).catch(err => {
+                isRoomActionBusy = false;
+                alert("Lỗi tạo phòng: " + err.message);
+            });
+        }).catch(() => { isRoomActionBusy = false; });
+    }
+
+    function joinOnlineRoom() {
+        if (isRoomActionBusy) return;
+        const code = document.getElementById('input-room-code').value.trim().toUpperCase();
+        if (!code) { alert("Nhập mã phòng!"); return; }
+        if (!db) { alert("⚠️ Không kết nối được Firebase!"); return; }
+
+        isRoomActionBusy = true;
+        if (activeRoomId && !isAIGame) detachActiveRoomListeners(activeRoomId);
+
+        const roomRef = db.ref('rooms/' + code);
+        let joinRejectReason = "Không tìm thấy phòng hoặc phòng đã đầy!";
+
+        roomRef.transaction(room => {
+            if (!room) {
+                joinRejectReason = "Không tìm thấy phòng #" + code + "!";
+                return;
+            }
+            const actorId = currentUid || myDeviceKey;
+            if (room.playerUids?.X === actorId) {
+                joinRejectReason = "Bạn đang là chủ phòng (X) của phòng này!";
+                return;
+            }
+            if (room.status !== 'waiting' || (room.players && room.players.O)) {
+                joinRejectReason = "Phòng #" + code + " đã đủ 2 người hoặc đang diễn ra!";
+                return;
+            }
+            if (!room.players) room.players = { X: "Người chơi", O: "" };
+            if (!room.playerUids) room.playerUids = { X: "", O: "" };
+            if (!room.playerAuthUids) room.playerAuthUids = { X: "", O: "" };
+            if (!room.countries) room.countries = { X: "", O: "" };
+            if (!room.devices) room.devices = { X: "PC", O: "" };
+            if (!room.avatars) room.avatars = { X: "", O: "" };
+            if (!room.frames) room.frames = { X: "frame-default", O: "frame-default" };
+            if (!room.pieceConfig) room.pieceConfig = { X: pieceConfig.X, O: pieceConfig.O };
+
+            room.players.O = myName;
+            room.playerUids.O = actorId;
+            room.playerAuthUids.O = authUid || '';
+            room.countries.O = myCountry;
+            room.devices.O = myDeviceType;
+            room.avatars.O = myAvatar;
+            room.frames.O = equippedFrame;
+            room.pieceConfig.O = pieceConfig.O;
+            room.status = 'playing';
+            room.updatedAt = Date.now();
+            return room;
+        }, (err, committed, snap) => {
+            isRoomActionBusy = false;
+            if (err || !committed || !snap.exists()) {
+                alert("❌ " + joinRejectReason);
+                return;
+            }
+            const room = snap.val();
+            statsData.onlineMatches += 1;
+            if (currentUid && !isAdminFull) {
+                db.ref('users/' + currentUid + '/stats/onlineMatches').set(statsData.onlineMatches).catch(() => {});
+                if (authUid) db.ref('usersByAuthUid/' + authUid + '/stats/onlineMatches').set(statsData.onlineMatches).catch(() => {});
+            }
+
+            isAIGame = false; isSpectatingAdmin = false; isImpersonatingAI = false; impersonatedRoomId = null;
+            myRole = 'O'; gameActive = true; currentOpponentName = room.players?.X || "Đối thủ (X)"; matchStartedAtTs = Date.now();
+            activeRoomId = code;
+
+            roomRef.child('presence/O').onDisconnect().set(false);
+            roomRef.child('presence/O').set(true);
+
+            ['post-login-screen', 'lobby-screen'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+            document.getElementById('current-room-code-txt').textContent = activeRoomId;
+            updateOnlinePlayerDisplay('O', myName, myAvatar, equippedFrame, myCountry, myDeviceType);
+            statusText.textContent = "Đã vào phòng, trận đấu bắt đầu!";
+            initCaroBoard();
+            listenToOnlineRoom();
+        });
+    }
+
+    function updateOnlinePlayerDisplay(role, name, avatarUrl, frameClass, countryCode, deviceType) {
+        const safeAvatar = isSafeImageDataUrl(avatarUrl) ? avatarUrl : "";
+        if (role === 'X') {
+            document.getElementById('name-x').textContent = `${name} (X)`;
+            document.getElementById('country-x').textContent = countryMap[countryCode] || "";
+            if (name) applyDeviceBadge(document.getElementById('device-badge-x'), deviceType);
+            document.getElementById('avatar-x').className = `avatar ${frameClass || 'frame-default'}`;
+            if (safeAvatar) {
+                document.getElementById('img-avatar-x').src = safeAvatar;
+                document.getElementById('img-avatar-x').style.display = 'block';
+                document.getElementById('txt-avatar-x').style.display = 'none';
+            }
+        } else {
+            document.getElementById('name-o').textContent = name ? `${name} (O)` : "Đang đợi... (O)";
+            document.getElementById('country-o').textContent = countryMap[countryCode] || "";
+            if (name) {
+                applyDeviceBadge(document.getElementById('device-badge-o'), deviceType);
+            } else {
+                document.getElementById('device-badge-o').style.display = 'none';
+            }
+            document.getElementById('avatar-o').className = `avatar ${frameClass || 'frame-default'}`;
+            if (safeAvatar) {
+                document.getElementById('img-avatar-o').src = safeAvatar;
+                document.getElementById('img-avatar-o').style.display = 'block';
+                document.getElementById('txt-avatar-o').style.display = 'none';
+            }
+        }
+    }
+
+    function copyRoomCode() { navigator.clipboard.writeText(activeRoomId || "").then(() => alert("Đã sao chép mã phòng!")); }
+
+    let isMoveSubmitting = false;
+    function handleCellClick(r, c) {
+        if (isSpectatingAdmin || !gameActive || board[r][c] !== '' || isMoveSubmitting) return;
+        playSound('click');
+
+        if (roomMinesMap[`${r},${c}`]) {
+            delete roomMinesMap[`${r},${c}`];
+            if (activeRoomId && !isAIGame && db) db.ref(`rooms/${activeRoomId}/mines/${r},${c}`).remove().catch(() => {});
+            alert(`💣 Ô (${r}, ${c}) có mìn! Bị mất 1 lượt!`);
+            if (!isAIGame && activeRoomId && db) {
+                db.ref('rooms/' + activeRoomId).transaction(room => {
+                    if (!room || room.status !== 'playing') return;
+                    room.turn = room.turn === 'X' ? 'O' : 'X';
+                    room.updatedAt = Date.now();
+                    return room;
+                });
+            } else if (isAIGame) {
+                isAITurn = true; setTimeout(makeMasterAIMove, 260);
+            }
+            refreshBoardDisplay();
+            return;
+        }
+
+        if (isImpersonatingAI && activeRoomId && db) {
+            isMoveSubmitting = true;
+            db.ref('rooms/' + activeRoomId).transaction(room => {
+                if (!room || room.status !== 'playing' || room.turn !== 'O') return;
+                const arr = (room.board || Array(ROWS * COLS).fill('').join(',')).split(',');
+                const idx = r * COLS + c;
+                if (arr[idx] !== '') return;
+                arr[idx] = 'O';
+                room.board = arr.join(',');
+                room.lastMove = `${r},${c}`;
+                room.updatedAt = Date.now();
+                const tmpBoard = [];
+                for (let rr = 0; rr < ROWS; rr++) tmpBoard.push(arr.slice(rr * COLS, (rr + 1) * COLS));
+                const win = checkWin5InARowOnGrid(tmpBoard, r, c, 'O');
+                if (win) room.status = 'ended_O';
+                else room.turn = 'X';
+                return room;
+            }, (err, committed, snap) => {
+                isMoveSubmitting = false;
+                if (!committed || !snap.exists()) {
+                    alert("Chưa tới lượt AI hoặc ô đã có quân!");
+                    return;
+                }
+                const win = snap.val()?.status === 'ended_O';
+                pushAIDataToMainAdmin({
+                    roomId: activeRoomId,
+                    role: 'O',
+                    move: { r, c },
+                    event: win ? 'ai_impersonation_win' : 'ai_impersonation_move'
+                });
+                statusText.textContent = win
+                    ? `🤖 AI (do bạn đội lốt) thắng! Đã trả dữ liệu về ${ADMIN_MAIN_UID}`
+                    : `🤖 Đã đi nước AI (${r}, ${c}) • Dữ liệu trả về ${ADMIN_MAIN_UID}`;
+            });
+            return;
+        }
+
+        if (isAIGame) {
+            if (isAITurn) return;
+            board[r][c] = 'X'; lastMovePos = { r, c }; refreshBoardDisplay();
+            if (checkWin5InARow(r, c, 'X')) {
+                const sec = matchStartedAtTs ? Math.max(1, Math.floor((Date.now() - matchStartedAtTs) / 1000)) : 1;
+                recordMatchHistory("AI", `WIN (${sec}s)`, sec);
+                rewardPlayer(5, true);
+                showResultModal('win', `Bạn thắng AI trong ${sec}s!`, '+5 💎 Gem');
+                return;
+            }
+            isAITurn = true; statusText.textContent = "🤖 AI đang đi...";
+            setTimeout(makeMasterAIMove, 260);
+        } else if (db && activeRoomId) {
+            isMoveSubmitting = true;
+            let rejectMsg = "";
+            db.ref('rooms/' + activeRoomId).transaction(room => {
+                if (!room || room.status !== 'playing') {
+                    rejectMsg = "Chờ đủ người chơi!";
+                    return;
+                }
+                if (room.turn !== myRole) {
+                    rejectMsg = "Chưa tới lượt bạn!";
+                    return;
+                }
+                const arr = (room.board || Array(ROWS * COLS).fill('').join(',')).split(',');
+                const idx = r * COLS + c;
+                if (arr[idx] !== '') {
+                    rejectMsg = "Ô này đã có quân!";
+                    return;
+                }
+                arr[idx] = myRole;
+                room.board = arr.join(',');
+                room.lastMove = `${r},${c}`;
+                room.updatedAt = Date.now();
+
+                const tmpBoard = [];
+                for (let rr = 0; rr < ROWS; rr++) tmpBoard.push(arr.slice(rr * COLS, (rr + 1) * COLS));
+                const win = checkWin5InARowOnGrid(tmpBoard, r, c, myRole);
+                if (win) room.status = 'ended_' + myRole;
+                else room.turn = myRole === 'X' ? 'O' : 'X';
+                return room;
+            }, (err, committed) => {
+                isMoveSubmitting = false;
+                if (!committed && rejectMsg) {
+                    alert(rejectMsg);
+                }
+            });
+        }
+    }
+
+    function makeMasterAIMove() {
+        if (!gameActive) return;
+        const startTs = performance.now();
+        const TIME_BUDGET_MS = 180;
+
+        const candidates = [];
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (board[r][c] === '' && hasNeighbor(r, c, 2)) {
+                    candidates.push({ r, c });
+                }
+            }
+        }
+
+        let bestMove = null;
+        if (!candidates.length) {
+            bestMove = { r: Math.floor(ROWS / 2), c: Math.floor(COLS / 2) };
+        } else {
+            for (const cand of candidates) {
+                board[cand.r][cand.c] = 'O';
+                const canWinNow = checkWin5InARow(cand.r, cand.c, 'O');
+                board[cand.r][cand.c] = '';
+                if (canWinNow) { bestMove = cand; break; }
+            }
+
+            if (!bestMove) {
+                for (const cand of candidates) {
+                    board[cand.r][cand.c] = 'X';
+                    const oppWinNow = checkWin5InARow(cand.r, cand.c, 'X');
+                    board[cand.r][cand.c] = '';
+                    if (oppWinNow) { bestMove = cand; break; }
+                }
+            }
+
+            if (!bestMove) {
+                let bestScore = -Infinity;
+                for (const cand of candidates) {
+                    if (performance.now() - startTs > TIME_BUDGET_MS) break;
+                    const attack = evaluatePositionAdvanced(cand.r, cand.c, 'O');
+                    const defend = evaluatePositionAdvanced(cand.r, cand.c, 'X');
+                    let score = attack * 1.18 + defend * 1.05;
+                    if (attack >= 25000) score += 80000;
+                    if (defend >= 25000) score += 65000;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = cand;
+                    }
+                }
+                if (!bestMove) bestMove = candidates[0];
+            }
+        }
+
+        const { r, c } = bestMove;
+        board[r][c] = 'O'; lastMovePos = { r, c }; refreshBoardDisplay(); playSound('click');
+        if (checkWin5InARow(r, c, 'O')) {
+            const sec = matchStartedAtTs ? Math.max(1, Math.floor((Date.now() - matchStartedAtTs) / 1000)) : 1;
+            recordMatchHistory("AI", `LOSE (${sec}s)`, sec);
+            showResultModal('lose', `AI thắng sau ${sec}s!`, 'Chúc may mắn lần sau');
+            return;
+        }
+        isAITurn = false; statusText.textContent = `Lượt của bạn (${myName || "Người chơi"})`;
+    }
+
+    function hasNeighbor(r, c, dist) {
+        for (let dr = -dist; dr <= dist; dr++) for (let dc = -dist; dc <= dist; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc] !== '') return true;
+        }
+        return false;
+    }
+
+    function evaluatePositionAdvanced(r, c, player) {
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        let total = 0, openThrees = 0, fourThreats = 0;
+        const opp = player === 'X' ? 'O' : 'X';
+        for (const [dr, dc] of dirs) {
+            let count = 1, blocked = 0;
+            for (const sgn of [1, -1]) {
+                let i = 1;
+                while (true) {
+                    const nr = r + dr * i * sgn, nc = c + dc * i * sgn;
+                    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) { blocked++; break; }
+                    if (board[nr][nc] === player) { count++; i++; }
+                    else { if (board[nr][nc] === opp) blocked++; break; }
+                }
+            }
+            if (count >= 5) total += 100000;
+            else if (count === 4 && blocked === 0) { total += 28000; fourThreats++; }
+            else if (count === 4 && blocked === 1) { total += 5200; fourThreats++; }
+            else if (count === 3 && blocked === 0) { total += 2600; openThrees++; }
+            else if (count === 3 && blocked === 1) { total += 350; }
+            else if (count === 2 && blocked === 0) { total += 140; }
+        }
+        if (openThrees >= 2) total += 22000;
+        if (fourThreats >= 1 && openThrees >= 1) total += 38000;
+        if (fourThreats >= 2) total += 45000;
+        return total;
+    }
+
+    function rewardPlayer(gemAmount, isWin = false) {
+        myGem += gemAmount;
+        if (isWin) statsData.caroWins += 1;
+        if (currentUid && !isAdminFull && db) {
+            db.ref('users/' + currentUid + '/currency/gem').transaction(cur => (cur ?? 0) + gemAmount).catch(() => {});
+            if (authUid) db.ref('usersByAuthUid/' + authUid + '/currency/gem').set(myGem).catch(() => {});
+            if (isWin) {
+                db.ref('users/' + currentUid + '/stats/caroWins').transaction(cur => (cur ?? 0) + 1).catch(() => {});
+                if (authUid) db.ref('usersByAuthUid/' + authUid + '/stats/caroWins').set(statsData.caroWins).catch(() => {});
+            }
+        }
+        updateUserUI();
+    }
+
+    function startAdminTelemetryForRoom(room) {
+        stopRoomTelemetryTimer();
+        if (!isAdminFull) return;
+        const createdAt = room.createdAt || Date.now();
+        const renderInfo = () => {
+            const movesCount = (room.board || "").split(",").filter(x => x === "X" || x === "O").length;
+            const elapsedSec = Math.max(0, Math.floor((Date.now() - createdAt) / 1000));
+            document.getElementById('admin-room-telemetry').textContent =
+                `[ADMIN] Lượt: ${room.turn || "X"} | Bước: ${movesCount} | Thời gian: ${elapsedSec}s`;
+        };
+        renderInfo();
+        roomElapsedTimer = setInterval(renderInfo, 500);
+    }
+
+    function listenToOnlineRoom() {
+        if (!db || !activeRoomId) return;
+        const watchedRoomId = activeRoomId;
+        detachActiveRoomListeners(watchedRoomId);
+
+        db.ref('rooms/' + watchedRoomId).on('value', snapshot => {
+            if (activeRoomId !== watchedRoomId) return;
+            const room = snapshot.val();
+            if (!room) {
+                if (activeRoomId) { alert("Phòng đã bị xóa hoặc đóng."); returnToLobby(); }
+                return;
+            }
+            roomMinesMap = room.mines || {};
+            if (myRole === 'X' && room.players?.O) currentOpponentName = `${room.players.O} (O)`;
+            else if (myRole === 'O' && room.players?.X) currentOpponentName = `${room.players.X} (X)`;
+
+            if (isAdminFull) startAdminTelemetryForRoom(room);
+
+            if (room.players) {
+                if (room.players.X) updateOnlinePlayerDisplay('X', room.players.X, room.avatars?.X, room.frames?.X, room.countries?.X, room.devices?.X);
+                if (room.players.O) updateOnlinePlayerDisplay('O', room.players.O, room.avatars?.O, room.frames?.O, room.countries?.O, room.devices?.O);
+                else updateOnlinePlayerDisplay('O', '', '', 'frame-default', '', '');
+            }
+            if (room.pieceConfig) {
+                if (room.pieceConfig.X) pieceConfig.X = room.pieceConfig.X;
+                if (room.pieceConfig.O) pieceConfig.O = room.pieceConfig.O;
+            }
+            if (room.lastMove) {
+                const [lr, lc] = room.lastMove.split(',').map(Number);
+                if (!Number.isNaN(lr) && !Number.isNaN(lc)) lastMovePos = { r: lr, c: lc };
+            }
+
+            if (room.status === 'waiting') {
+                statusText.textContent = isSpectatingAdmin ? `[XEM THỰC TẾ] Phòng #${activeRoomId} - Chờ O...` : `Phòng ${activeRoomId} - Chờ người chơi 2...`;
+            } else if (room.status === 'playing') {
+                const turnName = room.turn === 'X' ? room.players?.X : room.players?.O;
+                if (isSpectatingAdmin) statusText.textContent = `[XEM THỰC TẾ] Lượt: ${turnName || room.turn}`;
+                else if (isImpersonatingAI) statusText.textContent = `🤖 Đội lốt AI (#${activeRoomId}) • Lượt: ${turnName || room.turn} → ${ADMIN_MAIN_UID}`;
+                else statusText.textContent = `Lượt của: ${turnName} (${room.turn})`;
+            } else if (room.status && room.status.startsWith('ended')) {
+                const winner = room.status.split('_')[1];
+                if (isSpectatingAdmin) {
+                    statusText.textContent = `[XEM THỰC TẾ] Kết thúc — Thắng: ${winner}`;
+                } else if (gameActive) {
+                    gameActive = false;
+                    const isWin = winner === myRole;
+                    const sec = matchStartedAtTs ? Math.max(1, Math.floor((Date.now() - matchStartedAtTs) / 1000)) : 1;
+                    recordMatchHistory(currentOpponentName, `${isWin ? "WIN" : "LOSE"} (${sec}s)`, sec);
+                    if (isImpersonatingAI) {
+                        pushAIDataToMainAdmin({ roomId: activeRoomId, role: 'O', event: `match_end_winner_${winner}` });
+                    } else if (isWin) {
+                        playSound('win'); rewardPlayer(10, true);
+                    }
+                    showResultModal(isWin ? 'win' : 'lose', isWin ? `Chiến thắng sau ${sec}s!` : `Đối thủ thắng sau ${sec}s!`, isWin ? '+10 💎 Gem' : '+0 💎 Gem');
+                }
+            }
+
+            if (room.board) {
+                const arr = room.board.split(',');
+                let idx = 0, sX = 0, sO = 0;
+                for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                    const val = arr[idx] || '';
+                    board[r][c] = val;
+                    if (val === 'X') sX++; else if (val === 'O') sO++;
+                    idx++;
+                }
+                refreshBoardDisplay();
+                document.getElementById('score-x').textContent = `Bước: ${sX}`;
+                document.getElementById('score-o').textContent = `Bước: ${sO}`;
+            }
+        }, () => {});
+
+        const chatBox = document.getElementById('chat-messages-box');
+        chatBox.textContent = '';
+        db.ref('rooms/' + watchedRoomId + '/chats').limitToLast(40).on('child_added', snapshot => {
+            if (activeRoomId !== watchedRoomId) return;
+            const chat = snapshot.val();
+            if (!chat) return;
+            if (chat.type === 'text' && containsForbiddenText(chat.text || "")) return;
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'chat-msg-item';
+
+            const senderBold = document.createElement('b');
+            senderBold.textContent = `${String(chat.sender || "Player").slice(0, 20)}: `;
+            itemDiv.appendChild(senderBold);
+
+            if (chat.type === 'image' && isSafeImageDataUrl(chat.url)) {
+                const imgEl = document.createElement('img');
+                imgEl.src = chat.url;
+                imgEl.className = 'chat-img';
+                imgEl.alt = 'Chat Image';
+                imgEl.onclick = () => openLightbox(chat.url);
+                itemDiv.appendChild(imgEl);
+            } else {
+                const textSpan = document.createElement('span');
+                textSpan.textContent = String(chat.text || "").slice(0, MAX_CHAT_LEN);
+                itemDiv.appendChild(textSpan);
+            }
+
+            chatBox.appendChild(itemDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, () => {});
+    }
+
+    function checkWin5InARowOnGrid(gridObj, r, c, player) {
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        for (const [dr, dc] of dirs) {
+            let count = 1;
+            for (const sgn of [1, -1]) {
+                let i = 1;
+                while (true) {
+                    const nr = r + dr * i * sgn, nc = c + dc * i * sgn;
+                    if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && gridObj[nr][nc] === player) { count++; i++; }
+                    else break;
+                }
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+
+    function checkWin5InARow(r, c, player) {
+        return checkWin5InARowOnGrid(board, r, c, player);
+    }
+
+    function showResultModal(type, msg, rewardTxt) {
+        const modal = document.getElementById('result-modal');
+        const title = document.getElementById('result-title');
+        modal.style.display = 'flex';
+        title.textContent = type.toUpperCase();
+        title.className = 'result-title ' + type;
+        document.getElementById('result-subtitle').textContent = msg;
+        document.getElementById('reward-badge').textContent = rewardTxt || '';
+    }
+
+    function restartMatch() {
+        if (isSpectatingAdmin) return;
+        if (isAIGame) {
+            startPlayWithAIMode();
+        } else if (activeRoomId && db) {
+            matchStartedAtTs = Date.now();
+            db.ref('rooms/' + activeRoomId).transaction(room => {
+                if (!room) return;
+                room.board = Array(ROWS * COLS).fill('').join(',');
+                room.turn = 'X';
+                room.status = 'playing';
+                room.lastMove = '';
+                room.updatedAt = Date.now();
+                return room;
+            }).then(() => {
+                document.getElementById('result-modal').style.display = 'none';
+                gameActive = true;
+                initCaroBoard();
+            }).catch(() => {});
+        }
+    }
+</script>
+</body>
+</html>
+                    showResultModal(isWin ? 'win' : 'lose', isWin ? `Chiến thắng sau ${sec}s!` : `Đối thủ thắng sau ${sec}s!`, isWin ? '+10 💎 Gem' : '+0 💎 Gem');
+                }
+            }
+
+            if (room.board) {
+                const arr = room.board.split(',');
+                let idx = 0, sX = 0, sO = 0;
+                for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                    const val = arr[idx] || '';
+                    board[r][c] = val;
+                    if (val === 'X') sX++; else if (val === 'O') sO++;
+                    idx++;
+                }
+                refreshBoardDisplay();
+                document.getElementById('score-x').textContent = `Bước: ${sX}`;
+                document.getElementById('score-o').textContent = `Bước: ${sO}`;
+            }
+        }, () => {});
+
+        // Chống XSS tuyệt đối: tạo node DOM bằng createElement + textContent, không dùng innerHTML
+        const chatBox = document.getElementById('chat-messages-box');
+        chatBox.textContent = '';
+        db.ref('rooms/' + watchedRoomId + '/chats').limitToLast(40).on('child_added', snapshot => {
+            if (activeRoomId !== watchedRoomId) return;
+            const chat = snapshot.val();
+            if (!chat) return;
+            if (chat.type === 'text' && containsForbiddenText(chat.text || "")) return;
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'chat-msg-item';
+
+            const senderBold = document.createElement('b');
+            senderBold.textContent = `${String(chat.sender || "Player").slice(0, 20)}: `;
+            itemDiv.appendChild(senderBold);
+
+            if (chat.type === 'image' && isSafeImageDataUrl(chat.url)) {
+                const imgEl = document.createElement('img');
+                imgEl.src = chat.url;
+                imgEl.className = 'chat-img';
+                imgEl.alt = 'Chat Image';
+                imgEl.onclick = () => openLightbox(chat.url);
+                itemDiv.appendChild(imgEl);
+            } else {
+                const textSpan = document.createElement('span');
+                textSpan.textContent = String(chat.text || "").slice(0, MAX_CHAT_LEN);
+                itemDiv.appendChild(textSpan);
+            }
+
+            chatBox.appendChild(itemDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, () => {});
+    }
+
+    function checkWin5InARowOnGrid(gridObj, r, c, player) {
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        for (const [dr, dc] of dirs) {
+            let count = 1;
+            for (const sgn of [1, -1]) {
+                let i = 1;
+                while (true) {
+                    const nr = r + dr * i * sgn, nc = c + dc * i * sgn;
+                    if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && gridObj[nr][nc] === player) { count++; i++; }
+                    else break;
+                }
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+
+    function checkWin5InARow(r, c, player) {
+        return checkWin5InARowOnGrid(board, r, c, player);
+    }
+
+    function showResultModal(type, msg, rewardTxt) {
+        const modal = document.getElementById('result-modal');
+        const title = document.getElementById('result-title');
+        modal.style.display = 'flex';
+        title.textContent = type.toUpperCase();
+        title.className = 'result-title ' + type;
+        document.getElementById('result-subtitle').textContent = msg;
+        document.getElementById('reward-badge').textContent = rewardTxt || '';
+    }
+
+    function restartMatch() {
+        if (isSpectatingAdmin) return;
+        if (isAIGame) {
+            startPlayWithAIMode();
+        } else if (activeRoomId && db) {
+            matchStartedAtTs = Date.now();
+            db.ref('rooms/' + activeRoomId).transaction(room => {
+                if (!room) return;
+                room.board = Array(ROWS * COLS).fill('').join(',');
+                room.turn = 'X';
+                room.status = 'playing';
+                room.lastMove = '';
+                room.updatedAt = Date.now();
+                return room;
+            }).then(() => {
+                document.getElementById('result-modal').style.display = 'none';
+                gameActive = true;
+                initCaroBoard();
+            }).catch(() => {});
+        }
+    }
+</script>
+</body>
+</html>
